@@ -143,12 +143,14 @@ export default class PreloadScene extends Phaser.Scene {
         
         // Special/status effect sounds
         this.load.audio('acid', 'assets/audio/acid.mp3');
+        this.load.audio('armor', 'assets/audio/armor.mp3');
         this.load.audio('charm', 'assets/audio/charm.mp3');
         this.load.audio('explosion', 'assets/audio/explosion.mp3');
         this.load.audio('fire', 'assets/audio/fire.mp3');
         this.load.audio('freeze', 'assets/audio/freeze.mp3');
         this.load.audio('knockback', 'assets/audio/knockback.mp3');
         this.load.audio('laser', 'assets/audio/laser.mp3');
+        this.load.audio('lifesteal', 'assets/audio/lifesteal.mp3');
         this.load.audio('mine_explosion', 'assets/audio/mine_explosion.mp3');
         this.load.audio('poison', 'assets/audio/poison.mp3');
         this.load.audio('puddle_deploy', 'assets/audio/puddle_deploy.mp3');

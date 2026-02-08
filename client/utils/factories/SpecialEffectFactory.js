@@ -2417,9 +2417,9 @@ export default class SpecialEffectFactory {
                             if (DEBUG_MODE) console.warn('[SummonUnit][onPlace] failed', e);
                         }
                     }
-                    if (scene.sound) {
+                    if (scene && scene.sound && effect.Audio) {
                         try {
-                            scene.sound.play(summonEffect.Audio, { volume: 0.6 });
+                            scene.sound.play(effect.Audio, { volume: 0.6 });
                         } catch (e) {
                             if (DEBUG_MODE) console.warn('[Summon] sound effect failed', e);
                         }
