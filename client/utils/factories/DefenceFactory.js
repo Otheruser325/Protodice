@@ -155,12 +155,7 @@ class Defence {
     update() {}
 
     takeDamage(amount, attacker = null) {
-        let multiplier = 1;
-        const acid = this.status.find(s => s.Type === 'Acid');
-        if (acid && acid.BonusDamage) {
-            multiplier *= acid.BonusDamage;
-        }
-        this.currentHealth -= amount * multiplier;
+        this.currentHealth -= amount;
     }
 
     applyStatus(effect) {

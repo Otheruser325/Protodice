@@ -10,13 +10,14 @@
 	"ReloadDelay": 1,
     "TargetingMode": "First",
     "ProjectileSprite": "null",
-	"DisplaySprite": "bat",
-	"SpecialEffects": [
+    "DisplaySprite": "bat",
+    "SpecialEffects": [
 	  {
 	    "Type": "Lifesteal",
 		"Value": 1.0
 	  }
 	],
     "StatusEffects": [],
+	"CanJump": true,
 	"IsProto": false
 }

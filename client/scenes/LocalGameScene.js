@@ -18,6 +18,9 @@ import PuddleFactory from '../utils/factories/PuddleFactory.js';
 import StatusEffectFactory from '../utils/factories/StatusEffectFactory.js';
 import SpecialEffectFactory from '../utils/factories/SpecialEffectFactory.js';
 
+const DICE_TEXTURE_KEY = 'dice_sheet';
+const PROTO_DICE_TEXTURE_KEY = 'prototype_dice_sheet';
+
 export default class LocalGameScene extends Phaser.Scene {
     constructor(sceneKey = 'LocalGameScene') {
         super(sceneKey);
@@ -33,6 +36,7 @@ export default class LocalGameScene extends Phaser.Scene {
         this.diceValues = [];
         this._diceRolling = false;
         this.prototypeDiceIndices = [];
+        this._protoVisualIndices = new Set();
         this.rolledThisTurn = false;
         this._combatInProgress = false;
         this.units = [];
@@ -1024,7 +1028,12 @@ export default class LocalGameScene extends Phaser.Scene {
         const diceBaseX = 600;
         const diceSpacing = 80;
         for (let i = 0; i < 2; i++) {
-            const d = this.add.image(diceBaseX + (i - 0.5) * diceSpacing, 450, 'dice1').setScale(0.5).setVisible(false);
+            const d = this.add.image(
+                diceBaseX + (i - 0.5) * diceSpacing,
+                450,
+                this._getDiceTextureKey(false),
+                this._getDiceFrameKey(1)
+            ).setScale(0.5).setVisible(false);
             d.originalX = d.x;
             d.originalY = d.y;
             this.diceSprites.push(d);
@@ -1237,6 +1246,7 @@ export default class LocalGameScene extends Phaser.Scene {
         }
         this.updateHolders();
         this.prototypeDiceIndices = [];
+        this._protoVisualIndices = new Set();
         this.rolledThisTurn = false;
         this.diceValues = [];
         if (this.diceSprites) {
@@ -1312,7 +1322,43 @@ export default class LocalGameScene extends Phaser.Scene {
         return false;
     }
 
+    _getDiceTextureKey(isProto = false) {
+        return isProto ? PROTO_DICE_TEXTURE_KEY : DICE_TEXTURE_KEY;
+    }
 
+    _getDiceFrameKey(value) {
+        const v = Number(value);
+        if (!Number.isFinite(v) || v < 1 || v > 6) return '1';
+        return String(v);
+    }
+
+    _isProtoVisualIndex(index) {
+        return this._protoVisualIndices && this._protoVisualIndices.has(index);
+    }
+
+    _setDieTexture(die, value, isProto = false) {
+        if (!die) return;
+        const key = this._getDiceTextureKey(isProto);
+        const frame = this._getDiceFrameKey(value);
+        if (this.textures && this.textures.exists(key)) {
+            die.setTexture(key, frame);
+        }
+    }
+
+    _syncDiceSprites() {
+        if (!Array.isArray(this.diceSprites)) return;
+        for (let i = 0; i < this.diceCount; i++) {
+            const die = this.diceSprites[i];
+            if (!die) continue;
+            die.setVisible(true);
+            this._setDieTexture(die, this.diceValues[i], this._isProtoVisualIndex(i));
+        }
+        for (let i = this.diceCount; i < this.diceSprites.length; i++) {
+            if (this.diceSprites[i]) {
+                this.diceSprites[i].setVisible(false);
+            }
+        }
+    }
 
     setDiceTextState() {
         const currentPlayerObj = this.players[this.currentPlayer];
@@ -1894,10 +1940,18 @@ export default class LocalGameScene extends Phaser.Scene {
 
                     // No revive - finalize death
                     if (!u._beingRemoved) {
-                        // Play combat death sound before removing unit
+                        // Play death sound based on unit type
                         try {
                             if (this.sound) {
-                                const deathSound = u.deathSound || u.DeathSound || 'unit_death';
+                                const isDefence = u.typeName in DefenceFactory.defenceData;
+                                const isMonster = u.typeName in MonsterFactory.monsterData;
+                                
+                                // Try unit-specific death sound first, then type-specific, then fallback
+                                const deathSound = u.deathSound || u.DeathSound || 
+                                    (isDefence ? 'defence_death' : null) || 
+                                    (isMonster ? 'monster_death' : null) || 
+                                    'unit_death';
+                                
                                 this.sound.play(deathSound, { volume: 0.5 });
                             }
                         } catch (e) {
@@ -2579,6 +2633,17 @@ export default class LocalGameScene extends Phaser.Scene {
             ? rerollPrototypeIndex.filter(i => Number.isInteger(i) && i >= 0)
             : (rerollPrototypeIndex !== null && rerollPrototypeIndex !== undefined ? [rerollPrototypeIndex] : null);
 
+        if (!rerollIndices || rerollIndices.length === 0) {
+            this._protoVisualIndices = new Set();
+        } else {
+            if (!this._protoVisualIndices) this._protoVisualIndices = new Set();
+            rerollIndices.forEach((idx) => {
+                if (idx >= 0 && idx < diceCount) {
+                    this._protoVisualIndices.add(idx);
+                }
+            });
+        }
+
         if (rerollIndices && rerollIndices.length > 0) {
             rerollIndices.forEach((idx) => {
                 if (idx >= 0 && idx < diceCount) {
@@ -2615,20 +2680,7 @@ export default class LocalGameScene extends Phaser.Scene {
         } catch (e) {}
 
         try {
-            if (Array.isArray(this.diceSprites)) {
-                for (let i = 0; i < this.diceCount; i++) {
-                    if (this.diceSprites[i]) {
-                        this.diceSprites[i].setVisible(true);
-                        this.diceSprites[i].setTexture(`dice${this.diceValues[i]}`);
-                    }
-                }
-                // Hide any dice beyond the configured count
-                for (let i = this.diceCount; i < this.diceSprites.length; i++) {
-                    if (this.diceSprites[i]) {
-                        this.diceSprites[i].setVisible(false);
-                    }
-                }
-            }
+            this._syncDiceSprites();
             // Only animate dice that were just rolled (not prototype re-rolls)
             if (!rerollIndices || rerollIndices.length === 0) {
                 await animateDiceRoll(this, this.diceValues.slice(0, this.diceCount));
@@ -2646,33 +2698,10 @@ export default class LocalGameScene extends Phaser.Scene {
                 await animateDiceRoll(this, prototypeOnly);
                 
                 // Ensure all dice sprites show correct values after animation
-                for (let i = 0; i < this.diceCount; i++) {
-                    if (this.diceSprites[i]) {
-                        this.diceSprites[i].setVisible(true);
-                        this.diceSprites[i].setTexture(`dice${this.diceValues[i]}`);
-                    }
-                }
-                // Hide any dice beyond the configured count
-                for (let i = this.diceCount; i < this.diceSprites.length; i++) {
-                    if (this.diceSprites[i]) {
-                        this.diceSprites[i].setVisible(false);
-                    }
-                }
+                this._syncDiceSprites();
             }
         } catch (e) {
-            if (Array.isArray(this.diceSprites)) {
-                for (let i = 0; i < this.diceCount; i++) {
-                    if (this.diceSprites[i]) {
-                        this.diceSprites[i].setTexture(`dice${this.diceValues[i]}`).setVisible(true);
-                    }
-                }
-                // Hide any dice beyond the configured count
-                for (let i = this.diceCount; i < this.diceSprites.length; i++) {
-                    if (this.diceSprites[i]) {
-                        this.diceSprites[i].setVisible(false);
-                    }
-                }
-            }
+            this._syncDiceSprites();
         }
 
         // Process the roll results
@@ -2721,6 +2750,7 @@ export default class LocalGameScene extends Phaser.Scene {
             if (this.prototypeDiceIndices.length === 0) {
                 this.rolledThisTurn = true;
             }
+
         }
 
         this._diceRolling = false;
@@ -2770,6 +2800,13 @@ export default class LocalGameScene extends Phaser.Scene {
             
             // Handle prototype re-rolls for all dice that showed 6
             while (this.prototypeDiceIndices && this.prototypeDiceIndices.length > 0) {
+                const myHolderCount = (this.holders || []).filter(h => h._owner === this.currentPlayer).length;
+                if (myHolderCount >= 10) {
+                    if (DEBUG_MODE) console.log('[doAITurn] Skipping prototype reroll - holder full at 10 units');
+                    this.prototypeDiceIndices = [];
+                    break;
+                }
+                
                 await this._wait(thinkingTime / 2);
                 
                 // Roll all prototype dice at once
@@ -3073,9 +3110,10 @@ export default class LocalGameScene extends Phaser.Scene {
             container.add(icon);
 
             // Dice pip requirement (1-5)
-            const diceKey = `dice${idx + 1}`;
+            const diceKey = this._getDiceTextureKey(false);
+            const diceFrame = this._getDiceFrameKey(idx + 1);
             if (this.textures && this.textures.exists(diceKey)) {
-                const dice = this.add.image(iconX - 10, iconY - 10, diceKey)
+                const dice = this.add.image(iconX - 10, iconY - 10, diceKey, diceFrame)
                     .setScale(0.25)
                     .setOrigin(0.5);
                 container.add(dice);
@@ -3103,9 +3141,10 @@ export default class LocalGameScene extends Phaser.Scene {
             container.add(icon);
 
             // Dice pip requirement (proto roll 1-5)
-            const diceKey = `dice${idx + 1}`;
+            const diceKey = this._getDiceTextureKey(true);
+            const diceFrame = this._getDiceFrameKey(idx + 1);
             if (this.textures && this.textures.exists(diceKey)) {
-                const dice = this.add.image(iconX - 10, iconY - 10, diceKey)
+                const dice = this.add.image(iconX - 10, iconY - 10, diceKey, diceFrame)
                     .setScale(0.25)
                     .setOrigin(0.5);
                 container.add(dice);
@@ -3304,6 +3343,7 @@ export default class LocalGameScene extends Phaser.Scene {
         this.holders = [];
         this.diceValues = [];
         this.prototypeDiceIndices = [];
+        this._protoVisualIndices = new Set();
         this.rolledThisTurn = false;
         this.units = [];
         this.totalPlayers = 2;

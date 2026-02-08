@@ -14,14 +14,14 @@
 	  {
 	    "Type": "CreatePuddle",
 		"PuddleType": "RadioactiveWaste",
-		"Duration": 3,
-		"Sprite": "radioactive_waste.png"
+		"Duration": 3
 	  },
 	  {
 	    "Type": "AreaOfEffect",
 		"Value": "3x3",
 		"SplashFactor": 1.0,
 		"Sprite": "nuclear_explosion.png",
+		"Audio": "explosion",
 		"CondenseTargeting": true
 	  }
 	],

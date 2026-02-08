@@ -17,7 +17,8 @@
 		"UnitType": "Skeleton",
 		"SpawnDirection": "Plus",
 		"SpawnCount": 4,
-		"Cooldown": 2
+		"Cooldown": 2,
+		"Audio": "summon"
 	  }
 	],
     "StatusEffects": [],

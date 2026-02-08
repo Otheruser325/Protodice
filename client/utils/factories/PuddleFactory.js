@@ -1,5 +1,7 @@
 import { DEBUG_MODE } from '../DebugManager.js';
 import CombatFactory from './CombatFactory.js';
+import DefenceFactory from './DefenceFactory.js';
+import MonsterFactory from './MonsterFactory.js';
 import SpecialEffectFactory from './SpecialEffectFactory.js';
 import StatusEffectFactory from './StatusEffectFactory.js';
 
@@ -250,6 +252,24 @@ export default class PuddleFactory {
         // Cleanup if the unit died from puddle damage/statuses
         if (unit.currentHealth !== undefined && unit.currentHealth <= 0 && !unit._beingRemoved) {
             try {
+                // Play death sound based on unit type
+                if (scene && scene.sound) {
+                    try {
+                        const isDefence = unit.typeName in DefenceFactory.defenceData;
+                        const isMonster = unit.typeName in MonsterFactory.monsterData;
+                        
+                        // Try unit-specific death sound first, then type-specific, then fallback
+                        const deathSound = unit.deathSound || unit.DeathSound || 
+                            (isDefence ? 'defence_death' : null) || 
+                            (isMonster ? 'monster_death' : null) || 
+                            'unit_death';
+                        
+                        scene.sound.play(deathSound, { volume: 0.5 });
+                    } catch (e) {
+                        // Sound not available, continue silently
+                    }
+                }
+
                 if (typeof scene._removeUnitCompletely === 'function') {
                     scene._removeUnitCompletely(unit);
                     return;

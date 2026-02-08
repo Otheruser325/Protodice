@@ -14,7 +14,9 @@
         {
             "Type": "DeathEffect",
             "Radius": "3x3",
-            "DeathDamage": 30
+            "DeathDamage": 30,
+            "Sprite": "explosion.png",
+            "Audio": "mine_explosion"
         }
     ],
     "StatusEffects": [],

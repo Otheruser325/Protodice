@@ -2,7 +2,7 @@
     "TypeName": "RadioactiveWaste",
     "Damage": 6,
     "Duration": 3,
-    "Sprite": "radioactive_puddle",
+    "Sprite": "radioactive_waste",
     "StatusEffects": [
         {
             "Type": "Poison",

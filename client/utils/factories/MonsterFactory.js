@@ -117,6 +117,7 @@ class Monster {
         this.isProto = data.IsProto;
         this.canTargetAdjacentLanes = data.CanTargetAdjacentLanes || false;
         this.backTargeting = data.BackTargeting || false;
+        this.canJump = !!data.CanJump;
         this.currentHealth = this.health;
         this.currentAmmo = this.ammo;
         this.reloadTimer = 0;
@@ -153,19 +154,17 @@ class Monster {
     update() {}
 
     takeDamage(amount, attacker = null) {
-        let multiplier = 1;
-        const acid = this.status.find(s => s.Type === 'Acid');
-        if (acid && acid.BonusDamage) {
-            multiplier *= acid.BonusDamage;
-        }
-        this.currentHealth -= amount * multiplier;
+        this.currentHealth -= amount;
     }
 
     applyStatus(effect) {
         const existing = this.status.find(s => s.Type === effect.Type);
-        if (existing) existing.Duration = effect.Duration;
-        else this.status.push({
-            ...effect
-        });
+        if (existing) {
+            existing.Duration = effect.Duration;
+        } else {
+            this.status.push({
+                ...effect
+            });
+        }
     }
 }

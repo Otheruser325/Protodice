@@ -54,6 +54,149 @@ export default class StatusEffectFactory {
         return unit.status.some(s => s.Type === 'Undetectable' && (s.Duration || 0) > 0);
     }
 
+    static _applyStatusDamageModifiers(target, rawDamage = 0) {
+        let dmg = Math.max(0, Number(rawDamage || 0));
+        if (dmg <= 0 || !target) return 0;
+
+        const armorEffect = Array.isArray(target.specialEffects) ?
+            target.specialEffects.find(e => e.Type === 'Armor') :
+            null;
+        const armorValue = armorEffect ? Number(armorEffect.Value) || 0 : 0;
+        const damageReduction = (armorEffect && armorEffect.DamageReduction !== undefined) ? Number(armorEffect.DamageReduction) : null;
+
+        const hasAcidStatus = Array.isArray(target.status) && target.status.some(s => s.Type === 'Acid');
+
+        if (armorValue > 0 && !hasAcidStatus) {
+            dmg = Math.max(0, dmg - armorValue);
+        }
+
+        if (Number.isFinite(damageReduction) && !hasAcidStatus) {
+            dmg = Math.round(dmg * damageReduction);
+        }
+
+        const acidStatus = Array.isArray(target.status) ? target.status.find(s => s.Type === 'Acid') : null;
+        const acidMult = (target && typeof target._acidBonusMultiplier === 'number')
+            ? target._acidBonusMultiplier
+            : (acidStatus ? Number(acidStatus.BonusDamage ?? 1.25) : null);
+
+        if (Number.isFinite(acidMult) && acidMult > 0) {
+            dmg = dmg * acidMult;
+        }
+
+        return Math.max(0, Math.round(dmg));
+    }
+
+    static _getKnockbackSteps(unit, value, direction) {
+        const amount = Math.abs(Number(value || 0));
+        if (!Number.isFinite(amount) || amount <= 0) return 0;
+
+        const intSteps = Math.floor(amount);
+        let steps = intSteps;
+
+        const frac = amount - intSteps;
+        if (frac > 0) {
+            if (!unit._fractionalKnockbackAcc) unit._fractionalKnockbackAcc = {};
+            const key = direction < 0 ? 'left' : 'right';
+            const acc = Number.isFinite(unit._fractionalKnockbackAcc[key]) ? unit._fractionalKnockbackAcc[key] : 0;
+            const next = acc + frac;
+            const extra = Math.floor(next);
+            if (extra > 0) steps += extra;
+            unit._fractionalKnockbackAcc[key] = next - extra;
+        }
+
+        return steps;
+    }
+
+    static _applyKnockback(effect, target) {
+        try {
+            if (!effect || !target) return;
+            const scene = effect._source?.sprite?.scene || target?.sprite?.scene || target?.scene || null;
+            if (!scene || !target.position || !Array.isArray(scene.grid)) return;
+
+            const defenceData = DefenceFactory.defenceData || {};
+            const monsterData = MonsterFactory.monsterData || {};
+            const isDefence = target.typeName in defenceData;
+            const isMonster = target.typeName in monsterData;
+
+            const direction = isDefence ? -1 : (isMonster ? 1 : 0);
+            if (!direction) return;
+
+            const rawValue = (effect.Value !== undefined && effect.Value !== null) ? effect.Value : 1;
+            const steps = StatusEffectFactory._getKnockbackSteps(target, rawValue, direction);
+            if (steps <= 0) return;
+
+            const row = target.position.row;
+            const col = target.position.col;
+            const cols = scene.grid?.[0]?.length || scene.GRID_COLS || 9;
+
+            const tryCol = (delta) => {
+                const nextCol = col + delta;
+                if (nextCol < 0 || nextCol >= cols) return null;
+                if (scene.grid[row] && scene.grid[row][nextCol] && scene.grid[row][nextCol].unit) return null;
+                return nextCol;
+            };
+
+            let newCol = tryCol(direction * steps);
+            if (newCol === null && steps > 1) {
+                newCol = tryCol(direction * 1);
+            }
+            if (newCol === null || newCol === col) return;
+
+            if (scene.grid[row] && scene.grid[row][col]) {
+                if (scene.grid[row][col].unit === target) {
+                    scene.grid[row][col].unit = null;
+                    scene.grid[row][col].sprite = null;
+                }
+            }
+
+            target.position.col = newCol;
+
+            if (!scene.grid[row]) scene.grid[row] = [];
+            if (!scene.grid[row][newCol]) scene.grid[row][newCol] = { sprite: null, unit: null };
+            scene.grid[row][newCol].unit = target;
+            scene.grid[row][newCol].sprite = target.sprite;
+
+            let txy;
+            try {
+                if (typeof scene.getTileXY === 'function') {
+                    txy = scene.getTileXY(row, newCol);
+                } else {
+                    txy = {
+                        x: (scene.GRID_OFFSET_X ?? 300) + newCol * (scene.TILE_SIZE ?? 60),
+                        y: (scene.GRID_OFFSET_Y ?? 150) + row * (scene.TILE_SIZE ?? 60)
+                    };
+                }
+            } catch (e) {
+                txy = {
+                    x: (scene.GRID_OFFSET_X ?? 300) + newCol * (scene.TILE_SIZE ?? 60),
+                    y: (scene.GRID_OFFSET_Y ?? 150) + row * (scene.TILE_SIZE ?? 60)
+                };
+            }
+
+            if (target.sprite) {
+                target.sprite.x = txy.x;
+                target.sprite.y = (txy.y ?? 0) + (scene.UNIT_Y_OFFSET ?? 0);
+                if (typeof target.sprite.setDepth === 'function') {
+                    target.sprite.setDepth(target.sprite.depth ?? 0);
+                }
+            }
+
+            try {
+                if (typeof scene._positionUnitUI === 'function') scene._positionUnitUI(target);
+            } catch (e) {}
+
+            if (typeof scene.addHistoryEntry === 'function') {
+                const moved = Math.abs(newCol - col);
+                if (moved > 0) {
+                    const unitName = target.fullName || target.typeName || 'Unit';
+                    scene.addHistoryEntry(`${unitName} knocked back ${moved} tile${moved === 1 ? '' : 's'}`);
+                }
+            }
+        } catch (e) {
+            if (DEBUG_MODE) console.warn('[Status][Knockback] failed', e);
+        }
+    }
+
     /**
      * Apply a status object onto a target (adds or refreshes).
      * effect: { Type, Duration, Value, ... }
@@ -98,6 +241,12 @@ export default class StatusEffectFactory {
             target.status = [];
         }
 
+        // Instant effects (do not persist in status array)
+        if (copy.Type === 'Knockback') {
+            StatusEffectFactory._applyKnockback(copy, target);
+            return;
+        }
+
 
         // Fire/Frozen conflict handling:
         // - If Frozen is applied to a burning unit, the fire goes out.
@@ -120,6 +269,9 @@ export default class StatusEffectFactory {
 
         // Ensure the target has a status array
         if (!Array.isArray(target.status)) target.status = [];
+
+        // Check if this is a new status application (for sound effects)
+        const isNewStatus = !target.status.some(s => s.Type === copy.Type);
 
         if (copy.Type === 'Poison') {
             const existingPoisonEffects = target.status.filter(s => s.Type === 'Poison');
@@ -157,6 +309,29 @@ export default class StatusEffectFactory {
             }
         } else {
             target.applyStatus(copy);
+            
+            // Play status effect sound when first applied
+            if (isNewStatus && target.scene && target.scene.sound) {
+                const soundKey = {
+                    'Acid': 'acid',
+                    'Charm': 'charm',
+                    'Fire': 'fire',
+                    'Frozen': 'freeze',
+                    'Knockback': 'knockback',
+                    'Poison': 'poison',
+                    'Purge': 'purge',
+                    'Slow': 'slow',
+                    'Stun': 'stun',
+                }[copy.Type];
+                
+                if (soundKey) {
+                    try {
+                        target.scene.sound.play(soundKey, { volume: 0.6 });
+                    } catch (e) {
+                        if (DEBUG_MODE) console.warn(`[Status][Sound] failed to play ${soundKey}`, e);
+                    }
+                }
+            }
         }
 
         // Apply Slow immediately if newly applied during combat so reload timing is updated right away.
@@ -291,6 +466,7 @@ export default class StatusEffectFactory {
                         const base = s.Value || 0;
                         const waveScaling = StatusEffectFactory._getWaveScaling(s, scene);
                         let final = Math.round(base * waveScaling);
+                        final = StatusEffectFactory._applyStatusDamageModifiers(unit, final);
                         if (final > 0) {
                             const preHp = (typeof unit.currentHealth === 'number') ? unit.currentHealth : null;
                             unit.currentHealth = Math.max(0, unit.currentHealth - final);
@@ -315,6 +491,7 @@ export default class StatusEffectFactory {
                         const base = s.Value || 0;
                         const waveScaling = StatusEffectFactory._getWaveScaling(s, scene);
                         let final = Math.round(base * waveScaling);
+                        final = StatusEffectFactory._applyStatusDamageModifiers(unit, final);
                         if (final > 0) {
                             const preHp = (typeof unit.currentHealth === 'number') ? unit.currentHealth : null;
                             unit.currentHealth = Math.max(0, unit.currentHealth - final);
@@ -444,6 +621,25 @@ export default class StatusEffectFactory {
             try {
                 if (unit._beingRemoved) continue;
                 unit._beingRemoved = true;
+
+                // Play death sound based on unit type
+                try {
+                    const scene = unit.scene || unit.sprite?.scene;
+                    if (scene && scene.sound) {
+                        const isDefence = unit.typeName in DefenceFactory.defenceData;
+                        const isMonster = unit.typeName in MonsterFactory.monsterData;
+                        
+                        // Try unit-specific death sound first, then type-specific, then fallback
+                        const deathSound = unit.deathSound || unit.DeathSound || 
+                            (isDefence ? 'defence_death' : null) || 
+                            (isMonster ? 'monster_death' : null) || 
+                            'unit_death';
+                        
+                        scene.sound.play(deathSound, { volume: 0.5 });
+                    }
+                } catch (e) {
+                    // Sound not available, continue silently
+                }
 
                 // Trigger DeathEffect BEFORE cleaning up the unit
                 // This ensures DeathEffect (heal/purge/damage) triggers on DoT death

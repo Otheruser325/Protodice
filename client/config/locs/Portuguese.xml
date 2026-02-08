@@ -28,8 +28,9 @@
       <T id="SET_SHUFFLE_ON" l="0">Faixa aleatoria: ON</T>
       <T id="SET_SHUFFLE_OFF" l="0">Faixa aleatoria: OFF</T>
       <T id="TRACK_DICE_LEAGUE" l="0">Liga dos dados</T>
-      <T id="TRACK_BASILISK_THEME" l="0">Tema Basilisk</T>
-      <T id="TRACK_POWERHOUSE" l="0">Pot&#234;ncia</T>
+      <T id="TRACK_PROTOTYPE_DEFENDERS" l="0">Prototype Defenders</T>
+      <T id="TRACK_CROSSING_THE_GAP" l="0">Crossing The Gap</T>
+      <T id="TRACK_DEFEND_THE_BREACH" l="0">Defend The Breach!</T>
 
       <T id="LOCAL_MENU_TITLE" l="0">Menu de jogo local</T>
       <T id="LOCAL_MENU_MY_LOADOUTS" l="0">Meus loadouts</T>
@@ -104,9 +105,12 @@ Ou sobrecarregue as pistas para quebrar as defesas.</T>
       <T id="ONLINE_CONNECTION_FAILED_BODY2" l="0">Verifique sua conexao e tente novamente.</T>
       <T id="ONLINE_NOT_SIGNED_IN" l="0">N&#227;o conectado</T>
       <T id="ONLINE_SIGN_IN_PROMPT" l="0">Faca login para jogar online</T>
+      <T id="ONLINE_SIGN_IN_ACTION" l="0">Sign In</T>
       <T id="ONLINE_CREATE_LOBBY" l="0">Criar lobby</T>
       <T id="ONLINE_LEADERBOARD" l="0">Ranking</T>
+      <T id="ONLINE_LEADERBOARD_MISSING" l="0">Leaderboard scene not available yet.</T>
       <T id="ONLINE_JOIN_LOBBY" l="0">Entrar no lobby</T>
+      <T id="ONLINE_TURN_TIMER" l="0">Turn timer: {0}s</T>
       <T id="ONLINE_CONNECTION_LOST" l="0">Conexao perdida. Reconecte e tente novamente.</T>
       <T id="ONLINE_INVALID_CODE" l="0">Insira um codigo valido (4-6 caracteres alfanumericos).</T>
       <T id="ONLINE_JOINING_LOBBY" l="0">Entrando no lobby...</T>
@@ -226,6 +230,7 @@ Ou sobrecarregue as pistas para quebrar as defesas.</T>
       <T id="TEAM_BLUE" l="0">AZUL</T>
       <T id="TEAM_RED" l="0">VERMELHO</T>
       <T id="POSTGAME_TITLE" l="0">Jogo local - Resultados</T>
+      <T id="POSTGAME_TITLE_ONLINE" l="0">Online Game - Results</T>
       <T id="POSTGAME_PUN_VICTORY_1" l="0">Dad&#225;stico!</T>
       <T id="POSTGAME_PUN_VICTORY_2" l="0">Vencedor vencedor!</T>
       <T id="POSTGAME_PUN_VICTORY_3" l="0">Rolando na vit&#243;ria!</T>
@@ -418,6 +423,7 @@ Ou sobrecarregue as pistas para quebrar as defesas.</T>
       <T id="STATUS_STUN_DESC" l="0">Atordoar: Prevents action{0}{1}{2}</T>
       <T id="STATUS_FROZEN_DESC" l="0">Congelado: Prevents action{0}{1}{2}</T>
       <T id="STATUS_ACID_DESC" l="0">&#193;cido{0}{1}{2}{3}</T>
+      <T id="STATUS_KNOCKBACK_DESC" l="0">Knockback: push {0} tile{1}{2}{3}</T>
       <T id="STATUS_PURGE_DESC" l="0">Purga: remove todos os efeitos de status{0}{1}</T>
       <T id="STATUS_CHARM_DESC" l="0">Encanto: ataca aliados{0}{1}{2}</T>
       <T id="STATUS_UNDETECTABLE_DESC" l="0">Indetect&#225;vel: n&#227;o pode ser alvo{0}{1}{2}</T>

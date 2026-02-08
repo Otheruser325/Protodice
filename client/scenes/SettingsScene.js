@@ -425,19 +425,15 @@ export default class SettingsScene extends Phaser.Scene {
             GlobalSettings.save(this);
             shuffleBtn.setText(newVal ? t('SET_SHUFFLE_ON', 'Shuffle Track: ON') : t('SET_SHUFFLE_OFF', 'Shuffle Track: OFF'));
             shuffleBtn.setColor(newVal ? '#66ff66' : '#ffffff');
-
-            // Immediately update playback mode
-            // If shuffle is enabled, we avoid forcing manual loop; otherwise keep behavior.
-            // Recreate playback to apply the new behaviour.
-            GlobalAudio._cleanupMusic && GlobalAudio._cleanupMusic(); // defensive; method exists
+            GlobalAudio._cleanupMusic && GlobalAudio._cleanupMusic();
             GlobalAudio.playMusic(this);
         });
 
         // ---- Track list ----
         const trackNames = [
-            t('TRACK_DICE_LEAGUE', 'Dice League'),
-            t('TRACK_BASILISK_THEME', 'Basilisk Theme'),
-            t('TRACK_POWERHOUSE', 'Powerhouse')
+            t('TRACK_PROTOTYPE_DEFENDERS', 'Prototype Defenders'),
+            t('TRACK_CROSSING_THE_GAP', 'Crossing The Gap'),
+            t('TRACK_DEFEND_THE_BREACH', 'Defend The Breach!'),
         ];
         const trackY = 250;
         const spacing = 70;

@@ -155,7 +155,7 @@ export default class OnlineConfigScene extends Phaser.Scene {
         });
 
         // Turn timer (selectable)
-        this.turnTimeBtn = this.add.text(1000, 730, t('ONLINE_TURN_TIMER', `Turn timer: ${this.turnTimeSeconds}s`), {
+        this.turnTimeBtn = this.add.text(1000, 730, fmt('ONLINE_TURN_TIMER', 'Turn timer: {0}s', this.turnTimeSeconds), {
             fontSize: '16px',
             fontFamily: '"Press Start 2P", cursive',
             color: '#cccccc'

@@ -54,7 +54,6 @@ export default class LocalConfigScene extends Phaser.Scene {
             fontSize: '32px', 
             fontFamily: '"Press Start 2P", cursive'
         }).setOrigin(0.5);
-        this._persistSettings();
 
         // --------------------------------------
         // Players
@@ -234,8 +233,7 @@ export default class LocalConfigScene extends Phaser.Scene {
         }).setOrigin(0.5).setInteractive();
 
         startBtn.on('pointerdown', () => {
-    GlobalAudio.playButton(this);
-            this._persistSettings();
+            GlobalAudio.playButton(this);
             this.scene.start('LocalGameScene', {
                 waves: this.selectedWaves,
                 switchSides: this.switchSides,
@@ -265,18 +263,8 @@ export default class LocalConfigScene extends Phaser.Scene {
     }
 
     refreshScene() {
-        this._persistSettings();
         this.scene.restart({
             waves: this.selectedWaves,
-            switchSides: this.switchSides,
-            diceCount: this.diceCount,
-            boardRows: this.boardRows,
-            boardCols: this.boardCols
-        });
-    }
-
-    _persistSettings() {
-        ChallengeManager.storeConfigSnapshot({
             switchSides: this.switchSides,
             diceCount: this.diceCount,
             boardRows: this.boardRows,

@@ -1,7 +1,7 @@
 {
-  "name": "fives-server",
+  "name": "protodice-server",
   "version": "1.0.0",
-  "description": "Fives dice game server",
+  "description": "Protodice game server",
   "type": "module",
   "main": "index.js",
   "scripts": {

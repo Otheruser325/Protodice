@@ -14,7 +14,8 @@
 	  {
 	    "Type": "LaserBeam",
 		"TravelEntireRow": false,
-	    "Extension": 4
+	    "Extension": 4,
+		"Audio": "laser"
 	  }
 	],
     "StatusEffects": [],

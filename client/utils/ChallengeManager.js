@@ -1,14 +1,13 @@
 export default class ChallengeManager {
     static STORAGE_KEY = 'protodice_challenges';
-    static CONFIG_KEY = 'localConfigSettings';
     static STATUSES = {
         NOT_READY: 'not_ready',
         FAIL: 'fail',
         COMPLETE: 'complete'
     };
     static REWARDS = {
-        daily: 200,
-        deucifer: 1000
+        daily: 250,
+        deucifer: 2500
     };
 
     static getTodayKey(date = new Date()) {
@@ -32,41 +31,6 @@ export default class ChallengeManager {
 
     static getReward(key) {
         return Number(this.REWARDS[key] || 0);
-    }
-
-    static getConfigSnapshot() {
-        const defaults = {
-            switchSides: false,
-            diceCount: 1,
-            boardRows: 5,
-            boardCols: 9
-        };
-        try {
-            const raw = localStorage.getItem(this.CONFIG_KEY);
-            if (!raw) return { ...defaults };
-            const parsed = JSON.parse(raw);
-            return {
-                switchSides: typeof parsed.switchSides === 'boolean' ? parsed.switchSides : defaults.switchSides,
-                diceCount: Number.isFinite(parsed.diceCount) ? parsed.diceCount : defaults.diceCount,
-                boardRows: Number.isFinite(parsed.boardRows) ? parsed.boardRows : defaults.boardRows,
-                boardCols: Number.isFinite(parsed.boardCols) ? parsed.boardCols : defaults.boardCols
-            };
-        } catch (e) {
-            return { ...defaults };
-        }
-    }
-
-    static storeConfigSnapshot(snapshot) {
-        if (!snapshot || typeof snapshot !== 'object') return;
-        const safe = {
-            switchSides: !!snapshot.switchSides,
-            diceCount: Number(snapshot.diceCount || 1),
-            boardRows: Number(snapshot.boardRows || 5),
-            boardCols: Number(snapshot.boardCols || 9)
-        };
-        try {
-            localStorage.setItem(this.CONFIG_KEY, JSON.stringify(safe));
-        } catch (e) {}
     }
 
     static getStatus(key, options = {}) {

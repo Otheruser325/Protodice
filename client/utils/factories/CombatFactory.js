@@ -170,6 +170,53 @@ export default class CombatFactory {
     }
 
     /**
+     * Show floating acid damage text for acid bonus damage.
+     * @param {Object} scene - Active scene
+     * @param {Object} unit - Target unit to anchor the text
+     * @param {number} amount - Acid damage amount to display
+     */
+    static _showAcidDamage(scene, unit, amount) {
+        if (!scene || !unit || (amount === undefined || amount === null)) return;
+        try {
+            const settings = GlobalSettings.get(scene) || {};
+            const dmg = Math.max(0, Math.round(amount));
+            if (dmg <= 0) return;
+
+            if (!settings.visualEffects) return;
+
+            let x = unit.sprite?.x;
+            let y = unit.sprite?.y;
+            if (typeof x === 'undefined' || typeof y === 'undefined') {
+                if (unit.position && typeof scene.getTileXY === 'function') {
+                    const t = scene.getTileXY(unit.position.row, unit.position.col);
+                    x = t.x;
+                    y = t.y;
+                } else {
+                    return;
+                }
+            }
+
+            const txt = scene.add.text(x + 10, y - 25, `+${dmg} ACID`, {
+                fontSize: '14px',
+                color: '#fbff00',
+                stroke: '#000000',
+                strokeThickness: 2
+            }).setOrigin(0.5);
+
+            scene.tweens.add({
+                targets: txt,
+                y: txt.y - 25,
+                alpha: 0,
+                duration: 800,
+                ease: 'Cubic.easeOut',
+                onComplete: () => txt.destroy()
+            });
+        } catch (e) {
+            if (DEBUG_MODE) console.warn('_showAcidDamage failed', e);
+        }
+    }
+
+    /**
      * Remove a unit immediately if it has RemoveWhenOutOfAmmo enabled.
      * @param {Object} unit - Unit that reached 0 ammo
      * @param {Object} scene - Active scene
@@ -468,6 +515,8 @@ export default class CombatFactory {
                 return;
             }
             if (!monster.position || !Number.isFinite(monster.speed) || !Array.isArray(scene.grid)) return;
+            const isCharmed = StatusEffectFactory.isUnitCharmed(monster);
+            const canJump = !!monster.canJump || !!monster.CanJump;
 
             const {
                 row,
@@ -538,6 +587,19 @@ export default class CombatFactory {
                         // If the explosion killed the monster, stop movement
                         if (monster._beingRemoved || monster.currentHealth <= 0) return;
                     } else {
+                        const blockerIsMonster = blocker && (blocker.typeName in (MonsterFactory.monsterData || {}));
+                        if (canJump && !isCharmed && blockerIsMonster && (s + 1) < steps) {
+                            const jumpCol = nextCol + direction;
+                            const maxCols = (scene.grid?.[0]?.length || scene.GRID_COLS || 9);
+                            if (jumpCol >= 0 && jumpCol < maxCols) {
+                                const jumpCell = scene.grid[row] && scene.grid[row][jumpCol];
+                                if (!jumpCell || !jumpCell.unit) {
+                                    newCol = jumpCol;
+                                    s += 1;
+                                    continue;
+                                }
+                            }
+                        }
                         break;
                     }
                 }
@@ -608,6 +670,13 @@ export default class CombatFactory {
                     );
                 }
             }
+            
+            // Recalculate damage boosts after movement (monster may have moved in/out of range of Damage Amplifiers)
+            try {
+                SpecialEffectFactory.applyDamageBoostsToUnit(monster, scene);
+            } catch (e) {
+                if (DEBUG_MODE) console.warn('[moveMonster] applyDamageBoostsToUnit failed', e);
+            }
         } catch (e) {
             console.error('MonsterFactory.move error:', e);
         }
@@ -638,6 +707,24 @@ export default class CombatFactory {
             attacker._lastDamageDealt = attacker._lastDamageDealt || 0;
         }
 
+        // Calculate acid bonus damage for instant damage text display
+        let acidBonusDmg = 0;
+        if (remainingDmg > 0 && target && Array.isArray(target.status)) {
+            const acidStatus = target.status.find(s => s.Type === 'Acid');
+            if (acidStatus) {
+                const acidMult = (target && typeof target._acidBonusMultiplier === 'number')
+                    ? target._acidBonusMultiplier
+                    : (acidStatus ? Number(acidStatus.BonusDamage ?? 1.25) : 1.25);
+                
+                // Calculate acid bonus: base damage * (acidMult - 1)
+                if (base > 0 && acidMult > 1) {
+                    acidBonusDmg = Math.round(base * (acidMult - 1));
+                    // Ensure we don't show more than the total damage
+                    acidBonusDmg = Math.min(acidBonusDmg, remainingDmg);
+                }
+            }
+        }
+
         if (remainingDmg > 0) {
             const preHp = (typeof target.currentHealth === 'number') ? target.currentHealth : null;
             target.takeDamage(remainingDmg, attacker);
@@ -647,9 +734,20 @@ export default class CombatFactory {
             if (scene && typeof scene._trackDamage === 'function') {
                 scene._trackDamage(attacker, dealt);
             }
+            
+            // Track acid bonus damage separately if present
+            if (acidBonusDmg > 0 && scene && typeof scene._trackDamage === 'function') {
+                scene._trackDamage(attacker, acidBonusDmg);
+            }
         }
 
         CombatFactory._showDamage(scene, target, finalDmg);
+        
+        // Show acid bonus damage separately if it exists
+        if (acidBonusDmg > 0) {
+            CombatFactory._showAcidDamage(scene, target, acidBonusDmg);
+        }
+        
         SpecialEffectFactory.applyOnHitEffects(attacker, target, scene);
     }
 
@@ -820,6 +918,12 @@ export default class CombatFactory {
             return true;
         };
 
+        const preferNonCharmedTargets = (list) => {
+            if (!Array.isArray(list) || list.length === 0) return list || [];
+            const nonCharmed = list.filter(u => !StatusEffectFactory.isUnitCharmed(u));
+            return nonCharmed.length ? nonCharmed : list;
+        };
+
         // Helper: build enemies for a defence (forward direction = positive col diff)
         const buildMonsterEnemiesForDef = (def, rowsToCheck) => {
             const hasBackTargeting = def.backTargeting === true;
@@ -827,7 +931,7 @@ export default class CombatFactory {
             const dir = isCharmed ? -1 : 1;
             const wantDefences = isCharmed;
 
-            return (scene.units || []).filter(u => {
+            const list = (scene.units || []).filter(u => {
                 if (!u || u.currentHealth <= 0 || !u.position) return false;
                 if (!rowsToCheck.includes(u.position.row)) return false;
                 if (!canDirectlyTarget(def, u)) return false;
@@ -837,13 +941,14 @@ export default class CombatFactory {
                 const isMonsterUnit = (u.typeName in MonsterFactory.monsterData);
                 if (wantDefences ? !isDefenceUnit : !isMonsterUnit) return false;
 
-                if (!hasBackTargeting && ((u.position.col - def.position.col) * dir) <= 0) return false;
+                if (!isCharmed && !hasBackTargeting && ((u.position.col - def.position.col) * dir) <= 0) return false;
                 return Math.abs(u.position.col - def.position.col) <= (def.range ?? 0);
             }).sort((a, b) => {
                 const distA = Math.abs(a.position.col - def.position.col);
                 const distB = Math.abs(b.position.col - def.position.col);
                 return distA - distB;
             });
+            return isCharmed ? list : preferNonCharmedTargets(list);
         };
 
         // Helper: build enemies for a monster (monsters attacking leftwards)
@@ -883,7 +988,7 @@ export default class CombatFactory {
                 if (wantMonsters ? !isMonsterUnit : !isDefenceUnit) return false;
                 if (u.canBeTrampled || u.CanBeTrampled) return false;
 
-                if (!hasBackTargeting && ((u.position.col - mon.position.col) * dir) <= 0) return false;
+                if (!isCharmed && !hasBackTargeting && ((u.position.col - mon.position.col) * dir) <= 0) return false;
                 return Math.abs(u.position.col - mon.position.col) <= monsterRange;
             });
 
@@ -900,7 +1005,138 @@ export default class CombatFactory {
                 return distA - distB;
             });
 
-            return [...sortedForceFields, ...sortedRegular];
+            const combined = [...sortedForceFields, ...sortedRegular];
+            return isCharmed ? combined : preferNonCharmedTargets(combined);
+        };
+
+        const tryAdvanceIntoKilledTarget = (mon) => {
+            if (!mon || !scene || !mon.position) return false;
+            if (StatusEffectFactory.isUnitCharmed(mon)) return false;
+            
+            // Only melee monsters (range <= 2) should advance into dead defence tiles
+            // Short melee (range=1): Orc, Golem
+            // Long melee (range=2): Bat, Demon
+            // Ranged monsters (range > 2) should stay in place and continue attacking
+            const monRange = Number.isFinite(mon.range) ? mon.range : 1;
+            if (monRange > 2) return false;
+            
+            const row = mon.position.row;
+            const col = mon.position.col;
+            const nextCol = col - 1;
+            if (nextCol < 0) return false;
+            const cell = scene.grid?.[row]?.[nextCol];
+            
+            if (!cell) return false;
+            const target = cell.unit;
+            
+            // If no target in cell, the tile is empty - monster can occupy it
+            if (!target) {
+                // Advance into empty cell
+                if (!scene.grid[row]) scene.grid[row] = [];
+                if (!scene.grid[row][nextCol]) scene.grid[row][nextCol] = { sprite: null, unit: null };
+                scene.grid[row][nextCol].unit = mon;
+                scene.grid[row][nextCol].sprite = mon.sprite;
+                
+                // Clear old position
+                if (scene.grid[row] && scene.grid[row][col] && scene.grid[row][col].unit === mon) {
+                    scene.grid[row][col].unit = null;
+                    scene.grid[row][col].sprite = null;
+                }
+                
+                mon.position.col = nextCol;
+                
+                // Update sprite position
+                let txy;
+                try {
+                    if (typeof scene.getTileXY === 'function') {
+                        txy = scene.getTileXY(row, nextCol);
+                    } else {
+                        txy = {
+                            x: (scene.GRID_OFFSET_X ?? 300) + nextCol * (scene.TILE_SIZE ?? 60),
+                            y: (scene.GRID_OFFSET_Y ?? 150) + row * (scene.TILE_SIZE ?? 60)
+                        };
+                    }
+                } catch (e) {
+                    txy = {
+                        x: (scene.GRID_OFFSET_X ?? 300) + nextCol * (scene.TILE_SIZE ?? 60),
+                        y: (scene.GRID_OFFSET_Y ?? 150) + row * (scene.TILE_SIZE ?? 60)
+                    };
+                }
+
+                if (mon.sprite) {
+                    mon.sprite.x = txy.x;
+                    mon.sprite.y = (txy.y ?? 0) + (scene.UNIT_Y_OFFSET ?? 0);
+                    if (typeof mon.sprite.setDepth === 'function') {
+                        mon.sprite.setDepth(mon.sprite.depth ?? 0);
+                    }
+                }
+                try {
+                    if (typeof scene._positionUnitUI === 'function') scene._positionUnitUI(mon);
+                } catch (e) {}
+                return true;
+            }
+            
+            // If target is alive, don't advance
+            if (target.currentHealth > 0) return false;
+            
+            // Target is dead - advance into the cell (only for melee monsters)
+            // Clear any stale position references
+            if (!target._lastPosition && target.position) {
+                target._lastPosition = { ...target.position };
+            }
+            target.position = null;
+            try {
+                if (target.sprite && typeof target.sprite.setVisible === 'function') {
+                    target.sprite.setVisible(false);
+                }
+            } catch (e) {}
+
+            if (scene.grid[row] && scene.grid[row][col] && scene.grid[row][col].unit === mon) {
+                scene.grid[row][col].unit = null;
+                scene.grid[row][col].sprite = null;
+            }
+
+            if (!scene.grid[row]) scene.grid[row] = [];
+            if (!scene.grid[row][nextCol]) scene.grid[row][nextCol] = { sprite: null, unit: null };
+            scene.grid[row][nextCol].unit = mon;
+            scene.grid[row][nextCol].sprite = mon.sprite;
+            mon.position.col = nextCol;
+
+            let txy;
+            try {
+                if (typeof scene.getTileXY === 'function') {
+                    txy = scene.getTileXY(row, nextCol);
+                } else {
+                    txy = {
+                        x: (scene.GRID_OFFSET_X ?? 300) + nextCol * (scene.TILE_SIZE ?? 60),
+                        y: (scene.GRID_OFFSET_Y ?? 150) + row * (scene.TILE_SIZE ?? 60)
+                    };
+                }
+            } catch (e) {
+                txy = {
+                    x: (scene.GRID_OFFSET_X ?? 300) + nextCol * (scene.TILE_SIZE ?? 60),
+                    y: (scene.GRID_OFFSET_Y ?? 150) + row * (scene.TILE_SIZE ?? 60)
+                };
+            }
+
+            if (mon.sprite) {
+                mon.sprite.x = txy.x;
+                mon.sprite.y = (txy.y ?? 0) + (scene.UNIT_Y_OFFSET ?? 0);
+                if (typeof mon.sprite.setDepth === 'function') {
+                    mon.sprite.setDepth(mon.sprite.depth ?? 0);
+                }
+            }
+            try {
+                if (typeof scene._positionUnitUI === 'function') scene._positionUnitUI(mon);
+            } catch (e) {}
+            
+            // Recalculate damage boosts after advancement
+            try {
+                SpecialEffectFactory.applyDamageBoostsToUnit(mon, scene);
+            } catch (e) {
+                if (DEBUG_MODE) console.warn('[tryAdvanceIntoKilledTarget] applyDamageBoostsToUnit failed', e);
+            }
+            return true;
         };
 
         // Process defence attacks
@@ -943,8 +1179,13 @@ export default class CombatFactory {
                         if (filtered.length) enemies = filtered;
                     }
 
-                    // Sort left-to-right (front most first)
-                    enemies.sort((a, b) => a.position.col - b.position.col);
+                    const defIsCharmed = StatusEffectFactory.isUnitCharmed(def);
+                    // Sort left-to-right (front most first), or nearest when charmed
+                    if (defIsCharmed) {
+                        enemies.sort((a, b) => Math.abs(a.position.col - def.position.col) - Math.abs(b.position.col - def.position.col));
+                    } else {
+                        enemies.sort((a, b) => a.position.col - b.position.col);
+                    }
                     if (!enemies.length) continue;
                     if (SpecialEffectFactory.hasBlindSpot(def, enemies, true)) continue;
 
@@ -1004,7 +1245,11 @@ export default class CombatFactory {
                                 // If target invalid/dead, pick a fresh target from enemies
                                 if (!target || target.currentHealth <= 0) {
                                     enemies = buildMonsterEnemiesForDef(def, rowsToCheck);
-                                    enemies.sort((a, b) => a.position.col - b.position.col);
+                                    if (defIsCharmed) {
+                                        enemies.sort((a, b) => Math.abs(a.position.col - def.position.col) - Math.abs(b.position.col - def.position.col));
+                                    } else {
+                                        enemies.sort((a, b) => a.position.col - b.position.col);
+                                    }
                                     if (enemies.length === 0) break;
                                     target = CombatFactory.pickTargetByMode(enemies, def.targetingMode || 'First', def);
                                 }
@@ -1038,7 +1283,11 @@ export default class CombatFactory {
 
                             // refresh enemies after volley for potential next volley
                             enemies = buildMonsterEnemiesForDef(def, rowsToCheck);
-                            enemies.sort((a, b) => a.position.col - b.position.col);
+                            if (defIsCharmed) {
+                                enemies.sort((a, b) => Math.abs(a.position.col - def.position.col) - Math.abs(b.position.col - def.position.col));
+                            } else {
+                                enemies.sort((a, b) => a.position.col - b.position.col);
+                            }
                         }
                         if (removedByAmmo) continue;
                     } else {
@@ -1048,7 +1297,11 @@ export default class CombatFactory {
                                 let target = chosenTargetsForShots.length ? chosenTargetsForShots.shift() : null;
                                 if (!target || target.currentHealth <= 0) {
                                     enemies = buildMonsterEnemiesForDef(def, rowsToCheck);
-                                    enemies.sort((a, b) => a.position.col - b.position.col);
+                                    if (defIsCharmed) {
+                                        enemies.sort((a, b) => Math.abs(a.position.col - def.position.col) - Math.abs(b.position.col - def.position.col));
+                                    } else {
+                                        enemies.sort((a, b) => a.position.col - b.position.col);
+                                    }
                                     if (enemies.length === 0) break;
                                     target = CombatFactory.pickTargetByMode(enemies, def.targetingMode || 'First', def);
                                 }
@@ -1134,6 +1387,7 @@ export default class CombatFactory {
 
         const tryMonsterAttack = async (mon, rowsToCheck) => {
             let removedByAmmo = false;
+            const monIsCharmed = StatusEffectFactory.isUnitCharmed(mon);
 
             let enemies = buildDefenceEnemiesForMon(mon, rowsToCheck);
 
@@ -1145,7 +1399,11 @@ export default class CombatFactory {
                 if (DEBUG_MODE) console.warn('[resolveCombat] interceptWithForceField(mon) failed', e);
             }
 
-            enemies.sort((a, b) => b.position.col - a.position.col);
+            if (monIsCharmed) {
+                enemies.sort((a, b) => Math.abs(a.position.col - mon.position.col) - Math.abs(b.position.col - mon.position.col));
+            } else {
+                enemies.sort((a, b) => b.position.col - a.position.col);
+            }
 
             if (!enemies.length) {
                 return { attacked: false, removedByAmmo: false };
@@ -1204,7 +1462,11 @@ export default class CombatFactory {
 
                         if (!target || target.currentHealth <= 0) {
                             enemies = buildDefenceEnemiesForMon(mon, rowsToCheck);
-                            enemies.sort((a, b) => b.position.col - a.position.col);
+                            if (monIsCharmed) {
+                                enemies.sort((a, b) => Math.abs(a.position.col - mon.position.col) - Math.abs(b.position.col - mon.position.col));
+                            } else {
+                                enemies.sort((a, b) => b.position.col - a.position.col);
+                            }
                             if (!enemies.length) break;
                             target = CombatFactory.pickTargetByMode(enemies, mon.targetingMode || 'First', mon);
                         }
@@ -1229,7 +1491,11 @@ export default class CombatFactory {
                     }
 
                     enemies = buildDefenceEnemiesForMon(mon, rowsToCheck);
-                    enemies.sort((a, b) => b.position.col - a.position.col);
+                    if (monIsCharmed) {
+                        enemies.sort((a, b) => Math.abs(a.position.col - mon.position.col) - Math.abs(b.position.col - mon.position.col));
+                    } else {
+                        enemies.sort((a, b) => b.position.col - a.position.col);
+                    }
                 }
 
                 return { attacked: true, removedByAmmo };
@@ -1240,7 +1506,11 @@ export default class CombatFactory {
                 let target = perShotTargets.length ? perShotTargets.shift() : null;
                 if (!target || target.currentHealth <= 0) {
                     enemies = buildDefenceEnemiesForMon(mon, rowsToCheck);
-                    enemies.sort((a, b) => a.position.col - b.position.col);
+                    if (monIsCharmed) {
+                        enemies.sort((a, b) => Math.abs(a.position.col - mon.position.col) - Math.abs(b.position.col - mon.position.col));
+                    } else {
+                        enemies.sort((a, b) => a.position.col - b.position.col);
+                    }
                     if (enemies.length === 0) break;
                     target = CombatFactory.pickTargetByMode(enemies, mon.targetingMode || 'First', mon);
                 }
@@ -1305,6 +1575,9 @@ export default class CombatFactory {
 
                 const attackResult = await tryMonsterAttack(mon, rowsToCheck);
                 if (attackResult.removedByAmmo) continue;
+                if (attackResult.attacked) {
+                    tryAdvanceIntoKilledTarget(mon);
+                }
 
                 if (!attackResult.attacked) {
                     const isCharmed = StatusEffectFactory.isUnitCharmed(mon);

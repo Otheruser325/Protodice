@@ -120,9 +120,10 @@ export default class PreloadScene extends Phaser.Scene {
         this.load.xml('loc:Welsh', 'config/locs/Welsh.xml');
 
         // Music tracks
-        this.load.audio('basilisk_theme', 'assets/music/basilisk_theme.mp3');
+        this.load.audio('crossing_the_gap', 'assets/music/crossing_the_gap.mp3');
+        this.load.audio('defend_the_breach', 'assets/music/defend_the_breach.mp3');
+        this.load.audio('prototype_defenders', 'assets/music/prototype_defenders.mp3');
         this.load.audio('dice_league', 'assets/music/dice_league.mp3');
-        this.load.audio('powerhouse', 'assets/music/powerhouse.mp3');
 
         // Generic sounds
         this.load.audio('button', 'assets/audio/button.mp3');
@@ -140,11 +141,25 @@ export default class PreloadScene extends Phaser.Scene {
         this.load.audio('monster_death', 'assets/audio/monster_death.mp3');
         this.load.audio('defence_death', 'assets/audio/defence_death.mp3');
         
-        // Special effect sounds
+        // Special/status effect sounds
+        this.load.audio('acid', 'assets/audio/acid.mp3');
+        this.load.audio('charm', 'assets/audio/charm.mp3');
         this.load.audio('explosion', 'assets/audio/explosion.mp3');
+        this.load.audio('fire', 'assets/audio/fire.mp3');
+        this.load.audio('freeze', 'assets/audio/freeze.mp3');
+        this.load.audio('knockback', 'assets/audio/knockback.mp3');
         this.load.audio('laser', 'assets/audio/laser.mp3');
-        this.load.audio('shield_break', 'assets/audio/shield_break.mp3');
+        this.load.audio('mine_explosion', 'assets/audio/mine_explosion.mp3');
+        this.load.audio('poison', 'assets/audio/poison.mp3');
+        this.load.audio('puddle_deploy', 'assets/audio/puddle_deploy.mp3');
+        this.load.audio('puddle_expired', 'assets/audio/puddle_expired.mp3');
+        this.load.audio('purge', 'assets/audio/purge.mp3');
         this.load.audio('revive', 'assets/audio/revive.mp3');
+        this.load.audio('shield_break', 'assets/audio/shield_break.mp3');
+        this.load.audio('shield_burst', 'assets/audio/shield_burst.mp3');
+        this.load.audio('shield_deploy', 'assets/audio/shield_deploy.mp3');
+        this.load.audio('slow', 'assets/audio/slow.mp3');
+        this.load.audio('stun', 'assets/audio/stun.mp3');
         this.load.audio('summon', 'assets/audio/summon.mp3');
 
         // VFX sprites
@@ -157,12 +172,8 @@ export default class PreloadScene extends Phaser.Scene {
 
         this.load.image('bg', 'assets/bg/bg_neon.png');
 
-        this.load.image('dice1', 'assets/dice/dice-six-faces-one.png');
-        this.load.image('dice2', 'assets/dice/dice-six-faces-two.png');
-        this.load.image('dice3', 'assets/dice/dice-six-faces-three.png');
-        this.load.image('dice4', 'assets/dice/dice-six-faces-four.png');
-        this.load.image('dice5', 'assets/dice/dice-six-faces-five.png');
-        this.load.image('dice6', 'assets/dice/dice-six-faces-six.png');
+        this.load.image('dice_sheet', 'assets/sprites/dice/dice.png');
+        this.load.image('prototype_dice_sheet', 'assets/sprites/dice/prototype_dice.png');
 
         this.load.image('settingsIcon', 'assets/ui/settings.png');
         this.load.image('achievementIcon', 'assets/ui/achievement.png');
@@ -208,6 +219,8 @@ export default class PreloadScene extends Phaser.Scene {
             GlobalLocalization.setLanguage(this, finalSettings.language || 'English');
         } catch (e) {}
 
+        this._registerDiceFrames();
+
         // Set factory data
         const defenceFiles = ['AcidShooter', 'Ballista', 'Barricade', 'BoomCannon', 'Cannon', 'CryoFan', 'DamageAmplifier', 'DestroyTower', 'Flamethrower', 'ForceField', 'Landmine', 'LazorBeam', 'MachineGun', 'MicroSentry', 'Microwavr', 'Mortar', 'Multishot', 'RadialLauncher', 'RocketLauncher', 'ShockBlaster', 'ShockLauncher', 'Shredder', 'SIMO', 'SniperTower'];
         DefenceFactory.defenceData = {};
@@ -232,5 +245,33 @@ export default class PreloadScene extends Phaser.Scene {
         this.time.delayedCall(1000, () => {
             this.scene.start('MenuScene');
         });
+    }
+
+    _registerDiceFrames() {
+        const frames = [
+            { key: '1', x: 47, y: 30, w: 97, h: 105 },
+            { key: '2', x: 199, y: 30, w: 100, h: 105 },
+            { key: '3', x: 354, y: 30, w: 97, h: 105 },
+            { key: '4', x: 47, y: 153, w: 97, h: 102 },
+            { key: '5', x: 199, y: 153, w: 100, h: 102 },
+            { key: '6', x: 354, y: 153, w: 97, h: 102 }
+        ];
+
+        const register = (key) => {
+            if (!this.textures || !this.textures.exists(key)) return;
+            const tex = this.textures.get(key);
+            if (tex._diceFramesRegistered) return;
+            frames.forEach((frame) => {
+                try {
+                    tex.add(frame.key, 0, frame.x, frame.y, frame.w, frame.h);
+                } catch (e) {
+                    /* ignore duplicate frame errors */
+                }
+            });
+            tex._diceFramesRegistered = true;
+        };
+
+        register('dice_sheet');
+        register('prototype_dice_sheet');
     }
 }

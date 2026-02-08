@@ -283,7 +283,7 @@ export default class OnlineLobbyScene extends Phaser.Scene {
         );
         const diceLabel = this.config.diceCount === 2 ? t('CONFIG_DICE_2', '2 Dice') : t('CONFIG_DICE_1', '1 Dice');
         const boardLabel = fmt('CONFIG_ROWS', 'Rows: {0}', this.config.boardRows || 5) + ', ' + fmt('CONFIG_COLS', 'Cols: {0}', this.config.boardCols || 9);
-        const timerLabel = t('ONLINE_TURN_TIMER', `Turn timer: ${this.config.turnTimeSeconds || 30}s`);
+        const timerLabel = fmt('ONLINE_TURN_TIMER', 'Turn timer: {0}s', this.config.turnTimeSeconds || 30);
 
         this.rulesTexts.waves.text = wavesLabel;
         this.rulesTexts.switchSides.text = switchLabel;

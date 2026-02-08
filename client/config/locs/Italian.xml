@@ -28,8 +28,9 @@
       <T id="SET_SHUFFLE_ON" l="0">Traccia casuale: ON</T>
       <T id="SET_SHUFFLE_OFF" l="0">Traccia casuale: OFF</T>
       <T id="TRACK_DICE_LEAGUE" l="0">Lega dei dadi</T>
-      <T id="TRACK_BASILISK_THEME" l="0">Tema Basilisk</T>
-      <T id="TRACK_POWERHOUSE" l="0">Potenza</T>
+      <T id="TRACK_PROTOTYPE_DEFENDERS" l="0">Prototype Defenders</T>
+      <T id="TRACK_CROSSING_THE_GAP" l="0">Crossing The Gap</T>
+      <T id="TRACK_DEFEND_THE_BREACH" l="0">Defend The Breach!</T>
 
       <T id="LOCAL_MENU_TITLE" l="0">Menu gioco locale</T>
       <T id="LOCAL_MENU_MY_LOADOUTS" l="0">I miei loadout</T>
@@ -104,9 +105,12 @@ Oppure travolgi i corridoi per superare le difese.</T>
       <T id="ONLINE_CONNECTION_FAILED_BODY2" l="0">Controlla la connessione e riprova.</T>
       <T id="ONLINE_NOT_SIGNED_IN" l="0">Non connesso</T>
       <T id="ONLINE_SIGN_IN_PROMPT" l="0">Accedi per giocare online</T>
+      <T id="ONLINE_SIGN_IN_ACTION" l="0">Sign In</T>
       <T id="ONLINE_CREATE_LOBBY" l="0">Crea lobby</T>
       <T id="ONLINE_LEADERBOARD" l="0">Classifica</T>
+      <T id="ONLINE_LEADERBOARD_MISSING" l="0">Leaderboard scene not available yet.</T>
       <T id="ONLINE_JOIN_LOBBY" l="0">Entra nella lobby</T>
+      <T id="ONLINE_TURN_TIMER" l="0">Turn timer: {0}s</T>
       <T id="ONLINE_CONNECTION_LOST" l="0">Connessione persa. Riconnetti e riprova.</T>
       <T id="ONLINE_INVALID_CODE" l="0">Inserisci un codice valido (4-6 caratteri alfanumerici).</T>
       <T id="ONLINE_JOINING_LOBBY" l="0">Accesso alla lobby...</T>
@@ -226,6 +230,7 @@ Oppure travolgi i corridoi per superare le difese.</T>
       <T id="TEAM_BLUE" l="0">BLU</T>
       <T id="TEAM_RED" l="0">ROSSO</T>
       <T id="POSTGAME_TITLE" l="0">Partita locale - Risultati</T>
+      <T id="POSTGAME_TITLE_ONLINE" l="0">Online Game - Results</T>
       <T id="POSTGAME_PUN_VICTORY_1" l="0">Dado-tastico!</T>
       <T id="POSTGAME_PUN_VICTORY_2" l="0">Vincitore vincitore!</T>
       <T id="POSTGAME_PUN_VICTORY_3" l="0">Rotolando verso la vittoria!</T>
@@ -418,6 +423,7 @@ Oppure travolgi i corridoi per superare le difese.</T>
       <T id="STATUS_STUN_DESC" l="0">Stordimento: Prevents action{0}{1}{2}</T>
       <T id="STATUS_FROZEN_DESC" l="0">Congelato: Prevents action{0}{1}{2}</T>
       <T id="STATUS_ACID_DESC" l="0">Acido{0}{1}{2}{3}</T>
+      <T id="STATUS_KNOCKBACK_DESC" l="0">Knockback: push {0} tile{1}{2}{3}</T>
       <T id="STATUS_PURGE_DESC" l="0">Purga: rimuove tutti gli effetti di stato{0}{1}</T>
       <T id="STATUS_CHARM_DESC" l="0">Fascino: attacca gli alleati{0}{1}{2}</T>
       <T id="STATUS_UNDETECTABLE_DESC" l="0">Undetectable: Non puo essere bersaglio{0}{1}{2}</T>

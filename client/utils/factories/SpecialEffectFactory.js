@@ -207,7 +207,6 @@ export default class SpecialEffectFactory {
         if (attacker._summonCooldown <= 0) {
             const player = scene.players[scene.currentPlayer];
             if (!player) return;
-            const wave = (typeof scene.currentWave === 'number') ? scene.currentWave : 1;
             let baseCooldown = Math.max(0, Number(summon.Cooldown || 0));
             attacker._summonCooldown = baseCooldown;
             if (DEBUG_MODE) console.log('Periodic Summon executed', {
@@ -227,6 +226,7 @@ export default class SpecialEffectFactory {
 
     /**
      * Apply or remove a damage booster across an area centered at (row,col).
+     * Now tracks source unit ID for proper cleanup.
      * @param {Object} scene - Active scene
      * @param {number} centerRow - Center row
      * @param {number} centerCol - Center column
@@ -240,6 +240,8 @@ export default class SpecialEffectFactory {
         if (!scene || typeof scene.grid === 'undefined') return;
         const radR = Math.floor((rows || 1) / 2);
         const radC = Math.floor((cols || 1) / 2);
+        const sourceId = sourceUnit?._uniqueId || sourceUnit?.typeName || 'unknown';
+        
         for (let rr = centerRow - radR; rr <= centerRow + radR; rr++) {
             for (let cc = centerCol - radC; cc <= centerCol + radC; cc++) {
                 if (rr < 0 || rr >= (scene.GRID_ROWS || scene.grid.length) || cc < 0 || cc >= (scene.GRID_COLS || (scene.grid[0] || []).length)) continue;
@@ -247,12 +249,26 @@ export default class SpecialEffectFactory {
                 if (!u) continue;
                 if (!SpecialEffectFactory._isEnemyUnit(sourceUnit, u)) {
                     if (apply) {
+                        // Track this amplifier as active for this unit
+                        u._activeDamageAmplifiers = u._activeDamageAmplifiers || new Map();
+                        const existingMult = u._activeDamageAmplifiers.get(sourceId) || 1;
+                        u._activeDamageAmplifiers.set(sourceId, existingMult * Number(multiplier || 1));
+                        
+                        // Also update the direct multiplier for backward compatibility
                         u._damageMultiplier = (u._damageMultiplier || 1) * Number(multiplier || 1);
                     } else {
-                        if (u._damageMultiplier) {
-                            u._damageMultiplier = u._damageMultiplier / (Number(multiplier || 1) || 1);
-                            if (Math.abs(u._damageMultiplier - 1) < 0.0001) delete u._damageMultiplier;
+                        // Remove this amplifier's contribution
+                        if (u._activeDamageAmplifiers && u._activeDamageAmplifiers.has(sourceId)) {
+                            u._activeDamageAmplifiers.delete(sourceId);
                         }
+                        // Recalculate from remaining amplifiers
+                        let newMult = 1;
+                        if (u._activeDamageAmplifiers) {
+                            for (const [, mult] of u._activeDamageAmplifiers) {
+                                newMult *= mult;
+                            }
+                        }
+                        u._damageMultiplier = newMult > 1 ? newMult : undefined;
                     }
                 }
             }
@@ -261,18 +277,28 @@ export default class SpecialEffectFactory {
 
     /**
      * Apply nearby damage booster effects onto a unit.
+     * Now uses tracked amplifier IDs for accurate recalculation.
      * @param {Object} unit - Unit to modify
      * @param {Object} scene - Active scene
      */
     static applyDamageBoostsToUnit(unit, scene) {
         if (!unit || !scene || !Array.isArray(scene.grid)) return;
+        
+        // Reset tracking for this unit
+        unit._activeDamageAmplifiers = new Map();
+        
         let totalMultiplier = 1.0;
         const maxR = (scene.GRID_ROWS || scene.grid.length);
         const maxC = (scene.GRID_COLS || (scene.grid[0] || []).length);
+        
         for (const other of (scene.units || [])) {
             if (!other || !other.position || !Array.isArray(other.specialEffects)) continue;
             const booster = other.specialEffects.find(e => e.Type === 'DamageBooster');
             if (!booster) continue;
+            
+            // Check if other is alive and in range
+            if (other.currentHealth <= 0) continue;
+            
             let r = 1,
                 c = 1;
             const radius = booster.Radius || booster.Value || '3x3';
@@ -286,12 +312,45 @@ export default class SpecialEffectFactory {
             const dr = Math.abs(unit.position.row - other.position.row);
             const dc = Math.abs(unit.position.col - other.position.col);
             if (dr <= Math.floor(r / 2) && dc <= Math.floor(c / 2)) {
-                totalMultiplier *= Number(booster.Value || 1.0) || 1.0;
+                const mult = Number(booster.Value || 1.0) || 1.0;
+                totalMultiplier *= mult;
+                
+                // Track this amplifier
+                const sourceId = other._uniqueId || other.typeName || 'unknown';
+                unit._activeDamageAmplifiers.set(sourceId, mult);
             }
         }
 
         if (totalMultiplier !== 1.0) {
             unit._damageMultiplier = (unit._damageMultiplier || 1) * totalMultiplier;
+        } else {
+            delete unit._damageMultiplier;
+        }
+        
+        if (DEBUG_MODE && totalMultiplier !== 1.0) {
+            console.log('[DamageBooster] applied to', unit.typeName, 'mult=', unit._damageMultiplier);
+        }
+    }
+
+    /**
+     * Recalculate damage boosts for all units after a Damage Amplifier is removed.
+     * Ensures monsters don't retain boosts from dead amplifiers.
+     * @param {Object} scene - Active scene
+     */
+    static recalculateAllDamageBoosts(scene) {
+        if (!scene || !Array.isArray(scene.units)) return;
+        
+        if (DEBUG_MODE) {
+            console.log('[DamageBooster] recalculating all damage boosts after amplifier removal');
+        }
+        
+        for (const unit of scene.units) {
+            if (!unit) continue;
+            // Only recalculate for units that are not Damage Amplifiers themselves
+            const isAmplifier = unit.specialEffects?.some(e => e.Type === 'DamageBooster');
+            if (isAmplifier) continue;
+            
+            SpecialEffectFactory.applyDamageBoostsToUnit(unit, scene);
         }
     }
 
@@ -303,9 +362,10 @@ export default class SpecialEffectFactory {
      * @param {Object|null} scene - Active scene
      * @returns {number} Final rounded damage
      */
-    static applyDamageModifiers(attacker = {}, target = {}, baseDamage = 0, scene = null) {
+    static applyDamageModifiers(attacker = {}, target = {}, baseDamage = 0, scene = null, options = null) {
         attacker._lastDamageDealtRaw = baseDamage;
         let dmg = Number(baseDamage || 0);
+        const opts = options || {};
 
         const armorEffect = Array.isArray(target.specialEffects) ?
             target.specialEffects.find(e => e.Type === 'Armor') :
@@ -322,7 +382,11 @@ export default class SpecialEffectFactory {
         const piercingFactor = (piercing && piercing.Value !== undefined) ? Number(piercing.Value) : 1.0;
 
         // Check if target has Acid status - Acid ignores armor
-        const hasAcidStatus = Array.isArray(target.status) && target.status.some(s => s.Type === 'Acid');
+        const forceAcid = !!opts.forceAcidStatus;
+        const hasAcidStatus = forceAcid || (Array.isArray(target.status) && target.status.some(s => s.Type === 'Acid'));
+
+        // Track if armor actually reduced damage
+        let armorReducedDamage = false;
 
         // --- Flat armor ---
         if (armorValue > 0) {
@@ -331,7 +395,9 @@ export default class SpecialEffectFactory {
                 dmg = dmg * factor;
                 if (DEBUG_MODE) console.log(hasPiercing ? '[ArmorPiercing][FlatArmor]' : '[Acid][IgnoreArmor]', attacker.typeName, 'factor=', factor, 'newDmg=', dmg);
             } else {
+                const preArmorDmg = dmg;
                 dmg = Math.max(0, dmg - armorValue);
+                armorReducedDamage = (preArmorDmg > dmg);
                 if (DEBUG_MODE) console.log('[Armor][FlatArmor]', target.typeName, 'armor=', armorValue, 'newDmg=', dmg);
             }
         }
@@ -343,26 +409,51 @@ export default class SpecialEffectFactory {
                 dmg = dmg * factor;
                 if (DEBUG_MODE) console.log(hasPiercing ? '[ArmorPiercing][BypassDR]' : '[Acid][BypassDR]', attacker.typeName, 'dr=', damageReduction);
             } else {
+                const preArmorDmg = dmg;
                 dmg = Math.round(dmg * damageReduction);
+                armorReducedDamage = armorReducedDamage || (preArmorDmg > dmg);
                 if (DEBUG_MODE) console.log('[Armor][DamageReduction]', target.typeName, 'dr=', damageReduction, 'newDmg=', dmg);
             }
         }
 
         // --- Acid bonus ---
-        if (target._acidBonusMultiplier && typeof target._acidBonusMultiplier === 'number') {
-            dmg = dmg * target._acidBonusMultiplier;
-            if (DEBUG_MODE) console.log('[SpecialEffect][AcidMultiplier]', target.typeName, 'mult=', target._acidBonusMultiplier, 'newDmg=', dmg);
+        let acidMult = (target && typeof target._acidBonusMultiplier === 'number') ? target._acidBonusMultiplier : null;
+        if (!Number.isFinite(acidMult) && Array.isArray(target.status)) {
+            const acidStatus = target.status.find(s => s.Type === 'Acid');
+            if (acidStatus) {
+                acidMult = Number(acidStatus.BonusDamage ?? acidStatus.Value ?? 1.25);
+            }
+        }
+        if (Number.isFinite(opts.acidMultiplier)) {
+            acidMult = Number(opts.acidMultiplier);
+        }
+        if (forceAcid && !Number.isFinite(acidMult)) {
+            acidMult = 1.25;
+        }
+        if (Number.isFinite(acidMult) && acidMult > 0) {
+            dmg = dmg * acidMult;
+            if (DEBUG_MODE) console.log('[SpecialEffect][AcidMultiplier]', target.typeName, 'mult=', acidMult, 'newDmg=', dmg);
         }
 
         // --- Attacker multiplier ---
         const attackerMultiplier = (attacker && (attacker._damageMultiplier !== undefined)) ? Number(attacker._damageMultiplier) : 1.0;
         dmg = dmg * attackerMultiplier;
 
+        // Play armor sound if damage was reduced by armor
+        if (armorReducedDamage && scene && scene.sound && dmg > 0) {
+            try {
+                scene.sound.play('armor', { volume: 0.6 });
+            } catch (e) {
+                if (DEBUG_MODE) console.warn('[Armor][Sound] failed to play armor sound', e);
+            }
+        }
+
         return Math.max(0, Math.round(dmg));
     }
 
     /**
      * Call on unit removal/destruction so any area buffs provided by that unit are removed.
+     * Now triggers full recalculation of damage boosts for remaining units.
      * @param {Object} unit - Unit being removed
      * @param {Object|null} scene - Active scene
      */
@@ -381,8 +472,11 @@ export default class SpecialEffectFactory {
             }
         } catch (e) {}
 
+        let removedDamageBooster = false;
+        
         unit.specialEffects.forEach(effect => {
             if (effect.Type === 'DamageBooster') {
+                removedDamageBooster = true;
                 let r = 1,
                     c = 1;
                 const radius = effect.Radius || effect.Value || '3x3';
@@ -416,6 +510,11 @@ export default class SpecialEffectFactory {
                 }
             }
         });
+        
+        // Full recalculation ensures monsters don't retain boosts from dead amplifiers
+        if (removedDamageBooster) {
+            SpecialEffectFactory.recalculateAllDamageBoosts(scene);
+        }
     }
 
     /**
@@ -853,6 +952,15 @@ export default class SpecialEffectFactory {
                 const s = scene.add.sprite(t.x, t.y, laser.Sprite);
                 scene.time.delayedCall(400, () => s.destroy());
             }
+
+            // Play laser sound effect if defined
+            if (laser.Audio && scene && scene.sound) {
+                try {
+                    scene.sound.play(laser.Audio, { volume: 0.6 });
+                } catch (e) {
+                    if (DEBUG_MODE) console.warn('[Laser] sound effect failed', e);
+                }
+            }
         }
 
         // --- AreaOfEffect (splash) handling with targeting filter support ---
@@ -971,11 +1079,23 @@ export default class SpecialEffectFactory {
         if (lifesteal && typeof attacker.currentHealth === 'number') {
             const v = lifesteal.Value || 0;
             const healed = Math.round((attacker._lastDamageDealt || 0) * v);
-            attacker.currentHealth = Math.min(attacker.health, attacker.currentHealth + healed);
-            if (DEBUG_MODE) console.log('Lifesteal healed', {
-                attacker: attacker.typeName,
-                healed
-            });
+            if (healed > 0) {
+                attacker.currentHealth = Math.min(attacker.health, attacker.currentHealth + healed);
+                
+                // Play lifesteal sound effect
+                if (scene && scene.sound) {
+                    try {
+                        scene.sound.play('lifesteal', { volume: 0.6 });
+                    } catch (e) {
+                        if (DEBUG_MODE) console.warn('[Lifesteal][Sound] failed to play lifesteal sound', e);
+                    }
+                }
+                
+                if (DEBUG_MODE) console.log('Lifesteal healed', {
+                    attacker: attacker.typeName,
+                    healed
+                });
+            }
         }
 
         // --- SummonUnit handling ---
@@ -1430,6 +1550,15 @@ export default class SpecialEffectFactory {
                 scene.time.delayedCall(400, () => s.destroy());
             }
         } catch (e) {}
+
+        // Play death sound effect if defined
+        if (death.Audio && scene && scene.sound) {
+            try {
+                scene.sound.play(death.Audio, { volume: 0.6 });
+            } catch (e) {
+                if (DEBUG_MODE) console.warn('[DeathEffect] sound effect failed', e);
+            }
+        }
     }
 
     /**
@@ -1852,6 +1981,12 @@ export default class SpecialEffectFactory {
                                     scene.time.delayedCall(300, () => s.destroy());
                                 }
                             } catch (e) {}
+
+                            try {
+                                if (scene.sound) {
+                                    scene.sound.play('shield_break', { volume: 0.6 });
+                                }
+                            } catch (e) {}
                         }
 
                         // if shield now depleted, handle dissipation or leave generator intact without shield
@@ -1869,7 +2004,7 @@ export default class SpecialEffectFactory {
                             // Play shield break sound effect
                             try {
                                 if (scene.sound) {
-                                    scene.sound.play('shield_break', { volume: 0.6 });
+                                    scene.sound.play('shield_burst', { volume: 0.6 });
                                 }
                             } catch (e) {}
 
@@ -2282,6 +2417,13 @@ export default class SpecialEffectFactory {
                             if (DEBUG_MODE) console.warn('[SummonUnit][onPlace] failed', e);
                         }
                     }
+                    if (scene.sound) {
+                        try {
+                            scene.sound.play(summonEffect.Audio, { volume: 0.6 });
+                        } catch (e) {
+                            if (DEBUG_MODE) console.warn('[Summon] sound effect failed', e);
+                        }
+                    }
                     break;
                 case 'HealAllies':
                     break;
@@ -2313,6 +2455,11 @@ export default class SpecialEffectFactory {
                             if (DEBUG_MODE) console.warn('[BlockAllLanes] shield VFX creation failed', e);
                         }
                     }
+                    try {
+                        if (scene.sound) {
+                            scene.sound.play('shield_deploy', { volume: 0.6 });
+                        }
+                    } catch (e) {}
                     break;
                 case 'DamageBooster':
                     const radius = effect.Radius || effect.Value || '3x3';

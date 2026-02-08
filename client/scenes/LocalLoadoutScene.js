@@ -677,6 +677,14 @@ export default class LocalLoadoutScene extends Phaser.Scene {
                     chanceText,
                     filterText
                 );
+            case 'Knockback':
+                const kbVal = effect.Value !== undefined ? effect.Value : 1;
+                return fmt('STATUS_KNOCKBACK_DESC', 'Knockback: push {0} tile{1}{2}{3}',
+                    kbVal,
+                    kbVal === 1 ? '' : 's',
+                    chanceText,
+                    filterText
+                );
             case 'Purge':
                 return fmt('STATUS_PURGE_DESC', 'Purge: Removes all status effects{0}{1}', chanceText, filterText);
             case 'Charm':

@@ -28,8 +28,9 @@
             <T id="SET_SHUFFLE_ON" l="0">Shuffle Track: ON</T>
             <T id="SET_SHUFFLE_OFF" l="0">Shuffle Track: OFF</T>
             <T id="TRACK_DICE_LEAGUE" l="0">Dice League</T>
-            <T id="TRACK_BASILISK_THEME" l="0">Basilisk Theme</T>
-            <T id="TRACK_POWERHOUSE" l="0">Powerhouse</T>
+            <T id="TRACK_PROTOTYPE_DEFENDERS" l="0">Prototype Defenders</T>
+            <T id="TRACK_CROSSING_THE_GAP" l="0">Crossing The Gap</T>
+            <T id="TRACK_DEFEND_THE_BREACH" l="0">Defend The Breach!</T>
 
             <T id="LOCAL_MENU_TITLE" l="0">Local Game Menu</T>
             <T id="LOCAL_MENU_MY_LOADOUTS" l="0">My Loadouts</T>
@@ -82,9 +83,12 @@
             <T id="ONLINE_CONNECTION_FAILED_BODY2" l="0">Check your internet connection and try again.</T>
             <T id="ONLINE_NOT_SIGNED_IN" l="0">Not signed in</T>
             <T id="ONLINE_SIGN_IN_PROMPT" l="0">Please sign in to play online</T>
+            <T id="ONLINE_SIGN_IN_ACTION" l="0">Sign In</T>
             <T id="ONLINE_CREATE_LOBBY" l="0">Create Lobby</T>
             <T id="ONLINE_LEADERBOARD" l="0">Leaderboard</T>
+            <T id="ONLINE_LEADERBOARD_MISSING" l="0">Leaderboard scene not available yet.</T>
             <T id="ONLINE_JOIN_LOBBY" l="0">Join Lobby</T>
+            <T id="ONLINE_TURN_TIMER" l="0">Turn timer: {0}s</T>
             <T id="ONLINE_CONNECTION_LOST" l="0">Connection lost. Please reconnect and try again.</T>
             <T id="ONLINE_INVALID_CODE" l="0">Please enter a valid lobby code (4-6 characters, letters and numbers only).</T>
             <T id="ONLINE_JOINING_LOBBY" l="0">Joining Lobby...</T>
@@ -211,6 +215,7 @@
             <T id="TEAM_RED" l="0">RED</T>
 
             <T id="POSTGAME_TITLE" l="0">Local Game - Results</T>
+            <T id="POSTGAME_TITLE_ONLINE" l="0">Online Game - Results</T>
             <T id="POSTGAME_PUN_VICTORY_1" l="0">Dice-tacular!</T>
             <T id="POSTGAME_PUN_VICTORY_2" l="0">Winner winner!</T>
             <T id="POSTGAME_PUN_VICTORY_3" l="0">Rolling in victory!</T>
@@ -414,6 +419,7 @@
             <T id="STATUS_STUN_DESC" l="0">Stun: Prevents action{0}{1}{2}</T>
             <T id="STATUS_FROZEN_DESC" l="0">Frozen: Prevents action{0}{1}{2}</T>
             <T id="STATUS_ACID_DESC" l="0">Acid{0}{1}{2}{3}</T>
+            <T id="STATUS_KNOCKBACK_DESC" l="0">Knockback: push {0} tile{1}{2}{3}</T>
             <T id="STATUS_PURGE_DESC" l="0">Purge: Removes all status effects{0}{1}</T>
             <T id="STATUS_CHARM_DESC" l="0">Charm: Attacks allies{0}{1}{2}</T>
             <T id="STATUS_UNDETECTABLE_DESC" l="0">Undetectable: Cannot be targeted{0}{1}{2}</T>

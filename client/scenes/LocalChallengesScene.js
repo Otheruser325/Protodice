@@ -17,8 +17,9 @@ export default class LocalChallengesScene extends Phaser.Scene {
     const fmt = (key, ...args) => GlobalLocalization.format(key, ...args);
     this.add.text(cx, 80, t('CHALLENGES_TITLE', 'CHALLENGES'), { fontSize: 32, fontFamily: titleFont }).setOrigin(0.5);
 
-    const configSnapshot = ChallengeManager.getConfigSnapshot();
     const dailyDateKey = ChallengeManager.getTodayKey();
+    const baseRandom = ChallengeManager.getSeededRandom(dailyDateKey);
+    const configRandom = ChallengeManager.getSeededRandom(`${dailyDateKey}|daily-config`);
 
     const monsterOpponents = [
       {
@@ -67,15 +68,21 @@ export default class LocalChallengesScene extends Phaser.Scene {
     };
 
     const buildDailyConfig = () => {
-      const random = ChallengeManager.getSeededRandom(dailyDateKey);
+      const random = baseRandom;
       const difficultyOptions = [
         t('DIFFICULTY_EASY', 'Easy'),
         t('DIFFICULTY_MEDIUM', 'Medium'),
         t('DIFFICULTY_HARD', 'Hard')
       ];
+      const diceOptions = [1, 2];
+      const rowOptions = [5, 6, 7];
+      const colOptions = [7, 9, 11, 13, 15];
+      const diceCount = diceOptions[Math.floor(configRandom() * diceOptions.length)];
+      const boardRows = rowOptions[Math.floor(configRandom() * rowOptions.length)];
+      const boardCols = colOptions[Math.floor(configRandom() * colOptions.length)];
       const waves = Math.floor(random() * 21) + 20;
       const aiDifficulty = difficultyOptions[Math.floor(random() * difficultyOptions.length)];
-      const switchSides = !!configSnapshot.switchSides;
+      const switchSides = random() < 0.5;
       const opponentPool = switchSides ? defenceOpponents : monsterOpponents;
       const opponent = opponentPool[Math.floor(random() * opponentPool.length)];
       const opponentName = opponent?.name || t('OPP_DEFAULT', 'Opponent');
@@ -115,9 +122,9 @@ export default class LocalChallengesScene extends Phaser.Scene {
         teamsEnabled: false,
         teams: ['blue', 'red'],
         switchSides,
-        diceCount: configSnapshot.diceCount,
-        boardRows: configSnapshot.boardRows,
-        boardCols: configSnapshot.boardCols,
+        diceCount,
+        boardRows,
+        boardCols,
         challengeLoadouts
       };
     };
@@ -136,9 +143,9 @@ export default class LocalChallengesScene extends Phaser.Scene {
         teamsEnabled: false,
         teams: ['blue', 'red'],
         switchSides: false,
-        diceCount: configSnapshot.diceCount,
-        boardRows: configSnapshot.boardRows,
-        boardCols: configSnapshot.boardCols,
+        diceCount: 1,
+        boardRows: 5,
+        boardCols: 9,
         challengeLoadouts: {
           1: {
             normalLoadout: deuciferLoadout.normalLoadout,

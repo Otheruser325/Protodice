@@ -6,6 +6,27 @@ export async function animateDiceRoll(scene, finalFaces) {
     const dice = scene.diceSprites; // <── use passed scene
     const diceCount = scene.diceCount || 1;
 
+    const getDiceTexture = (index, value) => {
+        const isProto = typeof scene._isProtoVisualIndex === 'function' ? scene._isProtoVisualIndex(index) : false;
+        if (scene && typeof scene._getDiceTextureKey === 'function' && typeof scene._getDiceFrameKey === 'function') {
+            return {
+                key: scene._getDiceTextureKey(isProto),
+                frame: scene._getDiceFrameKey(value)
+            };
+        }
+        return { key: `dice${value}`, frame: null };
+    };
+
+    const applyDiceTexture = (die, index, value) => {
+        if (!die) return;
+        const tex = getDiceTexture(index, value);
+        if (tex.frame !== null && tex.frame !== undefined) {
+            die.setTexture(tex.key, tex.frame);
+        } else {
+            die.setTexture(tex.key);
+        }
+    };
+
     const getEntry = (entry) => {
         if (entry === null || entry === undefined) {
             return { skip: true };
@@ -35,7 +56,7 @@ export async function animateDiceRoll(scene, finalFaces) {
         }
         d.setVisible(true);
         if (!info.animate) {
-            d.setTexture("dice" + info.value);
+            applyDiceTexture(d, i, info.value);
         }
     });
 
@@ -54,7 +75,7 @@ export async function animateDiceRoll(scene, finalFaces) {
                     if (!info || info.skip || !info.animate) return;
                     
                     const temp = Phaser.Math.Between(1, 6);
-                    die.setTexture("dice" + temp);
+                    applyDiceTexture(die, i, temp);
 
                     const ox = Phaser.Math.Between(-jitter, jitter);
                     const oy = Phaser.Math.Between(-jitter, jitter);
@@ -78,7 +99,7 @@ export async function animateDiceRoll(scene, finalFaces) {
                         const info = getEntry(finalFaces[i]);
                         if (!info || info.skip) return;
                         
-                        die.setTexture("dice" + info.value);
+                        applyDiceTexture(die, i, info.value);
 
                         if (info.animate) {
                             scene.tweens.add({

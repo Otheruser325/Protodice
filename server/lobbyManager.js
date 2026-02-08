@@ -4,6 +4,69 @@ import { getUsernameFromDB, getActivePlayers, normalizeAllPlayers } from "./util
 import { loadUser } from "./utils/userStorage.js";
 import LeaderboardManager from "./utils/leaderboardManager.js";
 
+const DEFAULT_LOBBY_CONFIG = Object.freeze({
+  players: 2,
+  waves: 20,
+  switchSides: false,
+  diceCount: 1,
+  boardRows: 5,
+  boardCols: 9,
+  turnTimeSeconds: 30
+});
+
+const WAVE_OPTIONS = [10, 15, 20, 25, 30, 35, 40, 45, 50];
+const DICE_OPTIONS = [1, 2];
+const BOARD_ROW_OPTIONS = [5, 6, 7];
+const BOARD_COL_OPTIONS = [7, 9, 11, 13, 15];
+const TURN_TIME_OPTIONS = [15, 30, 45, 60];
+
+function pickAllowedNumber(value, allowed, fallback) {
+  if (!Number.isFinite(value)) return fallback;
+  if (Array.isArray(allowed) && allowed.length > 0 && allowed.includes(value)) return value;
+  return fallback;
+}
+
+function normalizeLobbyConfig(raw = {}) {
+  const src = (raw && typeof raw === "object") ? raw : {};
+  const normalized = { ...DEFAULT_LOBBY_CONFIG };
+
+  const rawWaves = Number.isFinite(src.waves)
+    ? src.waves
+    : (Number.isFinite(src.rounds) ? src.rounds : (Number.isFinite(src.totalRounds) ? src.totalRounds : null));
+  normalized.waves = pickAllowedNumber(rawWaves, WAVE_OPTIONS, DEFAULT_LOBBY_CONFIG.waves);
+
+  if (typeof src.switchSides === "boolean") normalized.switchSides = src.switchSides;
+
+  const rawDice = Number.isFinite(src.diceCount) ? src.diceCount : (Number.isFinite(src.dice) ? src.dice : null);
+  normalized.diceCount = pickAllowedNumber(rawDice, DICE_OPTIONS, DEFAULT_LOBBY_CONFIG.diceCount);
+
+  const rawRows = Number.isFinite(src.boardRows) ? src.boardRows : (Number.isFinite(src.rows) ? src.rows : null);
+  normalized.boardRows = pickAllowedNumber(rawRows, BOARD_ROW_OPTIONS, DEFAULT_LOBBY_CONFIG.boardRows);
+
+  const rawCols = Number.isFinite(src.boardCols) ? src.boardCols : (Number.isFinite(src.cols) ? src.cols : null);
+  normalized.boardCols = pickAllowedNumber(rawCols, BOARD_COL_OPTIONS, DEFAULT_LOBBY_CONFIG.boardCols);
+
+  const rawTurnTime = Number.isFinite(src.turnTimeSeconds)
+    ? src.turnTimeSeconds
+    : (Number.isFinite(src.timeLimitSeconds) ? src.timeLimitSeconds : null);
+  normalized.turnTimeSeconds = pickAllowedNumber(rawTurnTime, TURN_TIME_OPTIONS, DEFAULT_LOBBY_CONFIG.turnTimeSeconds);
+
+  // Online matches are currently 2-player only; keep this locked for safety.
+  normalized.players = DEFAULT_LOBBY_CONFIG.players;
+
+  return normalized;
+}
+
+function ensureLobbyConfig(lobby) {
+  if (!lobby) return { ...DEFAULT_LOBBY_CONFIG };
+  const normalized = normalizeLobbyConfig(lobby.config || {});
+  const needsUpdate = !lobby.config || Object.keys(normalized).some(key => lobby.config[key] !== normalized[key]);
+  if (needsUpdate) {
+    lobby.config = { ...(lobby.config || {}), ...normalized };
+  }
+  return lobby.config || normalized;
+}
+
 export default class LobbyManager {
   constructor(io) {
     this.io = io;
