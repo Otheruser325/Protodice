@@ -8,12 +8,14 @@
     "Ammo": 1,
     "ReloadDelay": 1,
     "TargetingMode": "First",
-    "ProjectileSprite": "gust",
+    "ProjectileMotion": "Laser",
+    "ProjectileSprite": "null",
     "DisplaySprite": "cryofan",
     "SpecialEffects": [
         {
             "Type": "LaserBeam",
-            "TravelEntireRow": true
+            "TravelEntireRow": true,
+            "Sprite": "laser"
         }
     ],
     "StatusEffects": [

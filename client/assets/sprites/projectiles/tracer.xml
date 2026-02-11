@@ -1,0 +1,8 @@
+﻿<?xml version="1.0" ?>
+<SpriteInformation>
+    <FrameInformation name="tracer" texh="58" texw="133" type="png">
+        <Animation name="tracer">
+            <Cell ah="58" aw="133" ax="0" ay="0" h="58" name="tracer" w="133" x="0" y="0"/>
+        </Animation>
+    </FrameInformation>
+</SpriteInformation>

@@ -5,6 +5,7 @@ import GlobalLocalization from '../utils/LocalizationManager.js';
 import DefenceFactory from '../utils/factories/DefenceFactory.js';
 import MonsterFactory from '../utils/factories/MonsterFactory.js';
 import PuddleFactory from '../utils/factories/PuddleFactory.js';
+import SpriteFactory from '../utils/factories/SpriteFactory.js';
 
 export default class PreloadScene extends Phaser.Scene {
     constructor() {
@@ -165,10 +166,36 @@ export default class PreloadScene extends Phaser.Scene {
         this.load.audio('summon', 'assets/audio/summon.mp3');
 
         // VFX sprites
+        this.load.image('explosion', 'assets/sprites/vfx/explosion.png');
         this.load.image('radioactive_waste', 'assets/sprites/vfx/radioactive_waste.png');
         this.load.image('shield', 'assets/sprites/vfx/shield.png');
         this.load.image('shield_break', 'assets/sprites/vfx/shield_break.png');
         this.load.image('shield_burst', 'assets/sprites/vfx/shield_burst.png');
+
+        // Projectile sprites (used by SpriteFactory/CombatFactory)
+        const projectileFiles = [
+            'arrow',
+            'bomb',
+            'bullet',
+            'energy_blast',
+            'fire',
+            'flaming_boulder',
+            'jab',
+            'laser',
+            'lightning_ball',
+            'love_arrow',
+            'mortar_shell',
+            'nuclear_rocket',
+            'rock',
+            'rocket',
+            'shell',
+            'shock_bomb',
+            'shock_bullet',
+            'tank_shell',
+            'tracer',
+            'yellow_bullet'
+        ];
+        projectileFiles.forEach(f => this.load.image(f, 'assets/sprites/projectiles/' + f + '.png'));
 
         this.load.json('changelog', 'config/changelog.json');
 
@@ -222,6 +249,7 @@ export default class PreloadScene extends Phaser.Scene {
         } catch (e) {}
 
         this._registerDiceFrames();
+        this._registerExplosionFrames();
 
         // Set factory data
         const defenceFiles = ['AcidShooter', 'Ballista', 'Barricade', 'BoomCannon', 'Cannon', 'CryoFan', 'DamageAmplifier', 'DestroyTower', 'Flamethrower', 'ForceField', 'Landmine', 'LazorBeam', 'MachineGun', 'MicroSentry', 'Microwavr', 'Mortar', 'Multishot', 'RadialLauncher', 'RocketLauncher', 'ShockBlaster', 'ShockLauncher', 'Shredder', 'SIMO', 'SniperTower'];
@@ -243,6 +271,23 @@ export default class PreloadScene extends Phaser.Scene {
         try {
             await PuddleFactory.loadData();
         } catch (e) {}
+
+        try {
+            const defSprites = Object.values(DefenceFactory.defenceData || {}).map(d => d.DisplaySprite);
+            const monSprites = Object.values(MonsterFactory.monsterData || {}).map(d => d.DisplaySprite);
+            const projSprites = [
+                ...Object.values(DefenceFactory.defenceData || {}).map(d => d.ProjectileSprite),
+                ...Object.values(MonsterFactory.monsterData || {}).map(d => d.ProjectileSprite)
+            ];
+            const puddleSprites = Object.values(PuddleFactory.puddleData || {}).map(p => p.Sprite || p.DisplaySprite);
+
+            await SpriteFactory.preloadSpriteDefinitions('defence', defSprites);
+            await SpriteFactory.preloadSpriteDefinitions('monster', monSprites);
+            await SpriteFactory.preloadSpriteDefinitions('projectile', projSprites);
+            await SpriteFactory.preloadSpriteDefinitions('puddle', puddleSprites);
+        } catch (e) {
+            console.warn('[Preload] SpriteFactory preload failed', e);
+        }
 
         this.time.delayedCall(1000, () => {
             this.scene.start('MenuScene');
@@ -275,5 +320,48 @@ export default class PreloadScene extends Phaser.Scene {
 
         register('dice_sheet');
         register('prototype_dice_sheet');
+    }
+
+    _registerExplosionFrames() {
+        const key = 'explosion';
+        if (!this.textures || !this.textures.exists(key)) return;
+        const tex = this.textures.get(key);
+        if (tex._explosionFramesRegistered) return;
+
+        const source = tex.source && tex.source[0];
+        if (!source || !source.width || !source.height) return;
+
+        const width = source.width;
+        const height = source.height;
+
+        // If the sheet is a clean horizontal strip of square-ish frames, slice it.
+        // Otherwise, register a single full-frame for safe usage.
+        let frameCount = 1;
+        if (height > 0 && width % height === 0) {
+            const candidate = Math.floor(width / height);
+            if (candidate >= 2 && candidate <= 16) frameCount = candidate;
+        }
+
+        const frameWidth = Math.floor(width / frameCount);
+        for (let i = 0; i < frameCount; i++) {
+            try {
+                tex.add(`explosion_${i}`, 0, i * frameWidth, 0, frameWidth, height);
+            } catch (e) {
+                /* ignore duplicate frame errors */
+            }
+        }
+
+        if (frameCount > 1 && this.anims && !this.anims.exists('explosion')) {
+            try {
+                this.anims.create({
+                    key: 'explosion',
+                    frames: Array.from({ length: frameCount }, (_, i) => ({ key, frame: `explosion_${i}` })),
+                    frameRate: 12,
+                    repeat: 0
+                });
+            } catch (e) {}
+        }
+
+        tex._explosionFramesRegistered = true;
     }
 }

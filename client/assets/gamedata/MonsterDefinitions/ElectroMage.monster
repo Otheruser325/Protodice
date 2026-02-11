@@ -9,6 +9,7 @@
     "Ammo": 1,
     "ReloadDelay": 2,
     "TargetingMode": "First",
+    "ProjectileMotion": "Straight",
     "ProjectileSprite": "lightning_ball",
     "DisplaySprite": "electromage",
     "SpecialEffects": [],

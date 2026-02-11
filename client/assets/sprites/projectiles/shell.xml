@@ -1,0 +1,8 @@
+﻿<?xml version="1.0" ?>
+<SpriteInformation>
+    <FrameInformation name="shell" texh="73" texw="110" type="png">
+        <Animation name="shell">
+            <Cell ah="73" aw="110" ax="0" ay="0" h="73" name="shell" w="110" x="0" y="0"/>
+        </Animation>
+    </FrameInformation>
+</SpriteInformation>

@@ -55,11 +55,16 @@ export default class ChallengeManager {
         }
 
         const entry = data.challenges[key];
+        const prevStatus = entry.status;
         let rewardGranted = false;
+        let wasNewlyCompleted = false;
 
         if (didWin) {
             if (entry.status !== this.STATUSES.COMPLETE) {
                 entry.status = this.STATUSES.COMPLETE;
+                if (prevStatus !== this.STATUSES.COMPLETE) {
+                    wasNewlyCompleted = true;
+                }
             }
             if (reward > 0 && !entry.rewardClaimed) {
                 entry.rewardClaimed = true;
@@ -77,7 +82,8 @@ export default class ChallengeManager {
         return {
             status: entry.status,
             rewardGranted,
-            reward: rewardGranted ? reward : 0
+            reward: rewardGranted ? reward : 0,
+            wasNewlyCompleted
         };
     }
 

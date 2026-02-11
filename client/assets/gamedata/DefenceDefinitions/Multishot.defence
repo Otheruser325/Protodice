@@ -8,6 +8,7 @@
 	"Ammo": 1,
 	"ReloadDelay": 2,
     "TargetingMode": "First",
+	"ProjectileMotion": "Straight",
     "ProjectileSprite": "yellow_bullet",
 	"DisplaySprite": "multishot",
 	"SpecialEffects": [

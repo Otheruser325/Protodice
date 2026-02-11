@@ -17,6 +17,7 @@ import MonsterFactory from '../utils/factories/MonsterFactory.js';
 import PuddleFactory from '../utils/factories/PuddleFactory.js';
 import StatusEffectFactory from '../utils/factories/StatusEffectFactory.js';
 import SpecialEffectFactory from '../utils/factories/SpecialEffectFactory.js';
+import SpriteFactory from '../utils/factories/SpriteFactory.js';
 
 const DICE_TEXTURE_KEY = 'dice_sheet';
 const PROTO_DICE_TEXTURE_KEY = 'prototype_dice_sheet';
@@ -69,6 +70,8 @@ export default class LocalGameScene extends Phaser.Scene {
         this._historyLogButton = null;
         this._onHistoryLogKey = null;
         this._onEscKey = null;
+        this._onRollKey = null;
+        this._onEndTurnKey = null;
         this._escExitArmed = false;
         this._exitModalActive = false;
         this._exitModal = null;
@@ -98,6 +101,8 @@ export default class LocalGameScene extends Phaser.Scene {
         this.playerNames = data.names || this.playerNames;
         this._damageByUnit = {};
         this._damageIdCounter = 1;
+        this._elementalDamageByOwner = {};
+        this._ticklerUnlockedThisMatch = false;
         this._challengeKey = data.challengeKey || null;
         this._challengeDateKey = data.challengeDate || null;
         this._challengeReward = Number(data.challengeReward || 0);
@@ -212,7 +217,14 @@ export default class LocalGameScene extends Phaser.Scene {
         if (!typeName) return null;
         const factory = isDefence ? DefenceFactory : MonsterFactory;
         const data = factory?.getData?.(typeName) || factory?.defenceData?.[typeName] || factory?.monsterData?.[typeName];
-        return data?.displaySprite || data?.DisplaySprite || null;
+        let spriteKey = data?.displaySprite || data?.DisplaySprite || null;
+        if (spriteKey && this.textures.exists(spriteKey)) return spriteKey;
+        if (spriteKey) {
+            const spriteType = isDefence ? 'defence' : 'monster';
+            const cachedKey = SpriteFactory.getCachedPrimarySpriteKey(spriteType, spriteKey);
+            if (cachedKey && this.textures.exists(cachedKey)) return cachedKey;
+        }
+        return spriteKey;
     }
 
     _formatUnitTooltip(unit) {
@@ -768,9 +780,26 @@ export default class LocalGameScene extends Phaser.Scene {
         } catch (e) {}
     }
 
-    // Legacy cleanup function - now handled by unified lifecycle phase in endTurn
-    cleanupDeadUnitsAfterTick() {
-        if (DEBUG_MODE) console.log('[cleanupDeadUnitsAfterTick] deprecated - use lifecycle phase in endTurn');
+    _resolveUnitSpriteKey(unit, isDefence) {
+        if (!unit) return null;
+        const spriteType = isDefence ? 'defence' : 'monster';
+        let spriteKey = unit.displaySprite;
+
+        if (!spriteKey || !this.textures.exists(spriteKey)) {
+            const factory = isDefence ? DefenceFactory : MonsterFactory;
+            const data = factory?.getData?.(unit.typeName) || factory?.defenceData?.[unit.typeName] || factory?.monsterData?.[unit.typeName];
+            const fromData = data?.displaySprite || data?.DisplaySprite;
+            if (fromData) spriteKey = fromData;
+        }
+
+        if (spriteKey && !this.textures.exists(spriteKey)) {
+            const cachedKey = SpriteFactory.getCachedPrimarySpriteKey(spriteType, spriteKey);
+            if (cachedKey && this.textures.exists(cachedKey)) {
+                spriteKey = cachedKey;
+            }
+        }
+
+        return spriteKey || null;
     }
 
     ensureSpriteForUnit(unit, x = 300, y = 150, isHolder = false) {
@@ -784,17 +813,10 @@ export default class LocalGameScene extends Phaser.Scene {
 
             const size = Math.max(8, Math.floor((this.TILE_SIZE || 48) * (isHolder ? 0.65 : 0.8)));
             let spr = null;
-
-            // Determine sprite key - check unit.displaySprite first, then fall back to factory data
-            let spriteKey = unit.displaySprite;
-            if (!spriteKey || !this.textures.exists(spriteKey)) {
-                const isDefence = unit.typeName in DefenceFactory.defenceData;
-                const factory = isDefence ? DefenceFactory : MonsterFactory;
-                const data = factory?.getData?.(unit.typeName) || factory?.defenceData?.[unit.typeName] || factory?.monsterData?.[unit.typeName];
-                spriteKey = data?.displaySprite || data?.DisplaySprite;
-                if (spriteKey && this.textures.exists(spriteKey)) {
-                    unit.displaySprite = spriteKey;
-                }
+            const isDefence = unit.typeName in DefenceFactory.defenceData;
+            let spriteKey = this._resolveUnitSpriteKey(unit, isDefence);
+            if (spriteKey && this.textures.exists(spriteKey)) {
+                unit.displaySprite = spriteKey;
             }
 
             try {
@@ -1023,14 +1045,22 @@ export default class LocalGameScene extends Phaser.Scene {
             });
         });
 
-        // Dice
+        // Dice (positioned relative to board size to avoid overlap on larger grids)
+        const gridRows = this.GRID_ROWS || (this.grid ? this.grid.length : 5);
+        const tileSize = this.TILE_SIZE || 60;
+        const boardBottomY = (this.GRID_OFFSET_Y ?? 150) + Math.max(0, gridRows - 1) * tileSize;
+        const viewH = this.sys?.game?.config?.height || 800;
+        const diceTextY = Math.min(boardBottomY + 140, viewH - 90);
+        const diceY = Math.min(diceTextY - 80, viewH - 140);
+        const endTurnY = Math.min(diceTextY + 50, viewH - 40);
+
         this.diceSprites = [];
         const diceBaseX = 600;
         const diceSpacing = 80;
         for (let i = 0; i < 2; i++) {
             const d = this.add.image(
                 diceBaseX + (i - 0.5) * diceSpacing,
-                450,
+                diceY,
                 this._getDiceTextureKey(false),
                 this._getDiceFrameKey(1)
             ).setScale(0.5).setVisible(false);
@@ -1039,25 +1069,15 @@ export default class LocalGameScene extends Phaser.Scene {
             this.diceSprites.push(d);
         }
         this.diceSprite = this.diceSprites[0];
-        this.diceText = this.add.text(600, 700, this._t('GAME_ROLL_DICE', 'Roll Dice'), {
+        this.diceText = this.add.text(600, diceTextY, this._t('GAME_ROLL_DICE', 'Roll Dice'), {
             fontSize: 32
         }).setOrigin(0.5).setInteractive();
         this.diceText.on('pointerdown', () => {
-            const hasPrototypeDice = this.prototypeDiceIndices && this.prototypeDiceIndices.length > 0;
-            if (hasPrototypeDice) {
-                const indices = this.prototypeDiceIndices.slice();
-                if (indices.length > 1) {
-                    this.rollDice(false, 1, indices);
-                } else {
-                    this.rollDice(false, 1, indices[0]);
-                }
-            } else {
-                this.rollDice(false, 1, null);
-            }
+            this._handleRollDiceInput();
         });
 
         // End turn
-        this.endTurnBtn = this.add.text(600, 750, this._t('GAME_END_TURN', 'End Turn'), {
+        this.endTurnBtn = this.add.text(600, endTurnY, this._t('GAME_END_TURN', 'End Turn'), {
             fontSize: 28,
             color: '#ffffff'
         }).setOrigin(0.5).setInteractive();
@@ -1072,6 +1092,7 @@ export default class LocalGameScene extends Phaser.Scene {
         this._createHistoryLogUI();
         this._bindHistoryLogHotkey();
         this._bindExitHotkey();
+        this._bindTurnHotkeys();
 
         if (!this._manualDragInstalled) {
             this._manualDragInstalled = true;
@@ -1177,7 +1198,7 @@ export default class LocalGameScene extends Phaser.Scene {
         return null;
     }
 
-    _trackDamage(attacker, amount) {
+    _trackDamage(attacker, amount, damageType = null) {
         if (!attacker) return;
         const dmg = Math.max(0, Math.round(amount || 0));
         if (dmg <= 0) return;
@@ -1191,6 +1212,20 @@ export default class LocalGameScene extends Phaser.Scene {
         entry.name = name;
         entry.damage = Math.round((entry.damage || 0) + dmg);
         this._damageByUnit[id] = entry;
+
+        const type = String(damageType || '').trim().toLowerCase();
+        if (type === 'fire' || type === 'poison') {
+            if (!this._elementalDamageByOwner) this._elementalDamageByOwner = {};
+            const total = Math.max(0, Math.round((this._elementalDamageByOwner[ownerIndex] || 0) + dmg));
+            this._elementalDamageByOwner[ownerIndex] = total;
+            if (!this._ticklerUnlockedThisMatch) {
+                const owner = this.players?.[ownerIndex];
+                if (owner && !owner.isAI && total >= 100) {
+                    GlobalAchievements.maybeUnlock('tickler');
+                    this._ticklerUnlockedThisMatch = true;
+                }
+            }
+        }
     }
 
     _getMvpByPlayer() {
@@ -1285,9 +1320,11 @@ export default class LocalGameScene extends Phaser.Scene {
         const player = this.players[this.currentPlayer];
         const isHuman = player && !player.isAI;
         
-        // Check if player has rolled and has no units in holders
+        // Check if player has rolled and has no actions left
         const myHolding = (this.holders || []).some(h => h._owner === this.currentPlayer);
-        const canEndTurn = isHuman && this.rolledThisTurn && !myHolding;
+        const hasPlacement = this._hasPlacementAvailableForCurrentPlayer();
+        const noActions = this.rolledThisTurn && (!myHolding || !hasPlacement);
+        const canEndTurn = isHuman && noActions;
         
         if (canEndTurn) {
             this.endTurnBtn.setColor('#ff4444');
@@ -1863,7 +1900,7 @@ export default class LocalGameScene extends Phaser.Scene {
         });
     }
 
-    async endTurn() {
+    async endTurn(force = false) {
         if (this._combatInProgress) {
             if (DEBUG_MODE) console.log('[endTurn] Blocked: combat in progress');
             return;
@@ -1871,6 +1908,11 @@ export default class LocalGameScene extends Phaser.Scene {
         
         // Get the player who is ending their turn (before we switch)
         const endingPlayer = this.players[this.currentPlayer];
+
+        if (endingPlayer && endingPlayer.isAI && !force) {
+            if (DEBUG_MODE) console.log('[endTurn] Blocked: attempted to end AI turn without force');
+            return;
+        }
         
         // Only block if a human player tries to end turn during AI's active turn
         if (endingPlayer && !endingPlayer.isAI && this._aiTurnInProgress) {
@@ -1952,7 +1994,7 @@ export default class LocalGameScene extends Phaser.Scene {
                                     (isMonster ? 'monster_death' : null) || 
                                     'unit_death';
                                 
-                                this.sound.play(deathSound, { volume: 0.5 });
+                                GlobalAudio.playSfx(this, deathSound, 0.5);
                             }
                         } catch (e) {
                             // Sound not available, continue silently
@@ -2092,6 +2134,9 @@ export default class LocalGameScene extends Phaser.Scene {
             });
             if (humanWin && result.rewardGranted) {
                 challengeBonus = result.reward;
+            }
+            if (humanWin && this._challengeKey === 'daily' && result.wasNewlyCompleted) {
+                GlobalAchievements.completeChallenge?.('daily');
             }
         }
         const totalTokens = tokens + challengeBonus;
@@ -2487,19 +2532,13 @@ export default class LocalGameScene extends Phaser.Scene {
         const y = tilePos.y + (this.UNIT_Y_OFFSET || 0);
 
         // Get the correct sprite key from unit data
-        let spriteKey = unit.displaySprite;
         const isDefence = unit.typeName in DefenceFactory.defenceData;
+        let spriteKey = this._resolveUnitSpriteKey(unit, isDefence);
 
         // Verify the texture exists, fallback to a default if needed
         if (!spriteKey || !this.textures.exists(spriteKey)) {
-            const factory = isDefence ? DefenceFactory : MonsterFactory;
-            const data = factory?.getData?.(unit.typeName) || factory?.defenceData?.[unit.typeName] || factory?.monsterData?.[unit.typeName];
-            spriteKey = data?.displaySprite || data?.DisplaySprite;
-
-            if (!spriteKey || !this.textures.exists(spriteKey)) {
-                if (DEBUG_MODE) console.warn('[_placeUnitOnGrid] Texture not found for unit', unit.typeName, 'using fallback');
-                spriteKey = isDefence ? 'cannon' : 'goblin';
-            }
+            if (DEBUG_MODE) console.warn('[_placeUnitOnGrid] Texture not found for unit', unit.typeName, 'using fallback');
+            spriteKey = isDefence ? 'cannon' : 'goblin';
         }
 
         // Create sprite using ensureSpriteForUnit for consistency with player placement
@@ -2906,7 +2945,7 @@ export default class LocalGameScene extends Phaser.Scene {
                 this.updateEndTurnButtonState?.();
             } catch (e) {}
             
-            this.endTurn();
+            this.endTurn(true);
         }
     }
 
@@ -3041,6 +3080,49 @@ export default class LocalGameScene extends Phaser.Scene {
             this.showConfirmExit();
         };
         this.input.keyboard.on('keydown-ESC', this._onEscKey, this);
+    }
+
+    _handleRollDiceInput() {
+        if (this._exitModalActive) return;
+        if (this._combatInProgress || this._diceRolling) return;
+        const currentPlayerObj = this.players?.[this.currentPlayer] || null;
+        if (!currentPlayerObj || currentPlayerObj.isAI || this._aiTurnInProgress) return;
+        const hasPrototypeDice = this.prototypeDiceIndices && this.prototypeDiceIndices.length > 0;
+        if (this.rolledThisTurn && !hasPrototypeDice) return;
+        if (hasPrototypeDice) {
+            const indices = this.prototypeDiceIndices.slice();
+            if (indices.length > 1) {
+                this.rollDice(false, 1, indices);
+            } else {
+                this.rollDice(false, 1, indices[0]);
+            }
+        } else {
+            this.rollDice(false, 1, null);
+        }
+    }
+
+    _bindTurnHotkeys() {
+        if (!this.input || !this.input.keyboard) return;
+        if (this._onRollKey || this._onEndTurnKey) return;
+
+        this._onRollKey = (event) => {
+            if (event && event.repeat) return;
+            if (this._historyLogContainer && this._historyLogContainer.visible) return;
+            this._handleRollDiceInput();
+        };
+
+        this._onEndTurnKey = (event) => {
+            if (event && event.repeat) return;
+            if (this._historyLogContainer && this._historyLogContainer.visible) return;
+            const currentPlayerObj = this.players?.[this.currentPlayer] || null;
+            if (currentPlayerObj && currentPlayerObj.isAI) return;
+            if (this._aiTurnInProgress) return;
+            this.endTurn();
+        };
+
+        this.input.keyboard.on('keydown-SPACE', this._onRollKey, this);
+        this.input.keyboard.on('keydown-R', this._onRollKey, this);
+        this.input.keyboard.on('keydown-T', this._onEndTurnKey, this);
     }
 
     _toggleHistoryLog(forceVisible = null) {
@@ -3554,6 +3636,19 @@ export default class LocalGameScene extends Phaser.Scene {
             }
         } catch (e) {}
         this._onEscKey = null;
+        try {
+            if (this._onRollKey && this.input && this.input.keyboard) {
+                this.input.keyboard.off('keydown-SPACE', this._onRollKey, this);
+                this.input.keyboard.off('keydown-R', this._onRollKey, this);
+            }
+        } catch (e) {}
+        this._onRollKey = null;
+        try {
+            if (this._onEndTurnKey && this.input && this.input.keyboard) {
+                this.input.keyboard.off('keydown-T', this._onEndTurnKey, this);
+            }
+        } catch (e) {}
+        this._onEndTurnKey = null;
         this._escExitArmed = false;
         this._exitModalActive = false;
         this._exitModal = null;

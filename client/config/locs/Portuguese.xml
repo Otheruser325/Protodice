@@ -166,7 +166,7 @@ Ou sobrecarregue as pistas para quebrar as defesas.</T>
       <T id="ACH_TITLE" l="0">CONQUISTAS</T>
       <T id="ACH_FIRSTPLAY_TITLE" l="0">Sou novo nisso</T>
       <T id="ACH_FIRSTPLAY_DESC" l="0">Jogue Protodice pela primeira vez.</T>
-      <T id="ACH_WAVES_100_TITLE" l="0">Warm-Up Ondas</T>
+      <T id="ACH_WAVES_100_TITLE" l="0">Ondas de aquecimento</T>
       <T id="ACH_WAVES_100_DESC" l="0">Progrida 100 ondas no total.</T>
       <T id="ACH_WAVES_500_TITLE" l="0">Veterano de batalha</T>
       <T id="ACH_WAVES_500_DESC" l="0">Progrida 500 ondas no total.</T>
@@ -176,20 +176,34 @@ Ou sobrecarregue as pistas para quebrar as defesas.</T>
       <T id="ACH_TIME_1H_DESC" l="0">Jogue Protodice por 1 hora no total.</T>
       <T id="ACH_TIME_12H_TITLE" l="0">Tudo dentro</T>
       <T id="ACH_TIME_12H_DESC" l="0">Jogue Protodice por 12 horas no total.</T>
+      <T id="ACH_TIME_24H_TITLE" l="0">Viciado em dados</T>
+      <T id="ACH_TIME_24H_DESC" l="0">Jogue Protodice por 24 horas no total.</T>
       <T id="ACH_WINS_1_TITLE" l="0">Primeira Vit&#243;ria</T>
       <T id="ACH_WINS_1_DESC" l="0">Ven&#231;a sua primeira partida.</T>
       <T id="ACH_WINS_10_TITLE" l="0">Comandante veterano</T>
       <T id="ACH_WINS_10_DESC" l="0">Ven&#231;a 10 partidas.</T>
-      <T id="ACH_DEFEAT_ENEMIES_TITLE" l="0">Inimigo abatido</T>
-      <T id="ACH_DEFEAT_ENEMIES_DESC" l="0">Derrota 250 enemies (monsters as defender / defences as attacker).</T>
-      <T id="ACH_AUGMENTED_TITLE" l="0">Aprimorado</T>
-      <T id="ACH_AUGMENTED_DESC" l="0">Comprar an Epic unit in the shop.</T>
-      <T id="ACH_DARKEST_HOUR_TITLE" l="0">Em nossa hora mais sombria...</T>
-      <T id="ACH_DARKEST_HOUR_DESC" l="0">Comprar a Legendary unit in the shop.</T>
+      <T id="ACH_WINS_50_TITLE" l="0">Comandante especializado</T>
+      <T id="ACH_WINS_50_DESC" l="0">Ven&#231;a 50 partidas.</T>
+      <T id="ACH_KILLS_50_TITLE" l="0">Inimigo abatido</T>
+      <T id="ACH_KILLS_50_DESC" l="0">Derrote 50 inimigos (monstros como defensor / defesas como atacante).</T>
+      <T id="ACH_KILLS_250_TITLE" l="0">Sem mais brincadeira</T>
+      <T id="ACH_KILLS_250_DESC" l="0">Derrote 250 inimigos.</T>
+      <T id="ACH_KILLS_1000_TITLE" l="0">Matador de monstros</T>
+      <T id="ACH_KILLS_1000_DESC" l="0">Derrote 1.000 inimigos.</T>
+      <T id="ACH_DAILY_1_TITLE" l="0">Desafiante</T>
+      <T id="ACH_DAILY_1_DESC" l="0">Ven&#231;a um desafio di&#225;rio.</T>
+      <T id="ACH_DAILY_10_TITLE" l="0">Solucionador de problemas</T>
+      <T id="ACH_DAILY_10_DESC" l="0">Ven&#231;a 10 desafios di&#225;rios.</T>
+      <T id="ACH_OWN_EPIC_TITLE" l="0">Aprimorado</T>
+      <T id="ACH_OWN_EPIC_DESC" l="0">Obtenha uma unidade &#233;pica.</T>
+      <T id="ACH_OWN_LEGENDARY_TITLE" l="0">Em nossa hora mais sombria...</T>
+      <T id="ACH_OWN_LEGENDARY_DESC" l="0">Obtenha uma unidade lend&#225;ria.</T>
       <T id="ACH_HELLSCAPE_TITLE" l="0">Inferno</T>
-      <T id="ACH_HELLSCAPE_DESC" l="0">Derrota Deucifer in Deucifer's Pit.</T>
+      <T id="ACH_HELLSCAPE_DESC" l="0">Derrote Deucifer no Fosso de Deucifer.</T>
+      <T id="ACH_TICKLER_TITLE" l="0">O Cocegador</T>
+      <T id="ACH_TICKLER_DESC" l="0">Cause mais de 100 de dano de fogo/veneno em uma partida.</T>
       <T id="ACH_STUN_WAVE_TITLE" l="0">Quem est&#225; atordoado agora?</T>
-      <T id="ACH_STUN_WAVE_DESC" l="0">Atordoar or freeze 5 enemies in one wave.</T>
+      <T id="ACH_STUN_WAVE_DESC" l="0">Atordoe ou congele 5 inimigos em uma onda.</T>
       <T id="ACH_BADGE_COMPLETE" l="0">COMPLETO</T>
       <T id="ACH_BADGE_LOCKED" l="0">BLOQUEADO</T>
       <T id="ACH_STATS_UNLOCKED" l="0">DESBLOQUEADOS: {0} / {1}</T>
@@ -224,6 +238,7 @@ Ou sobrecarregue as pistas para quebrar as defesas.</T>
       <T id="CHALLENGE_WAVES" l="0">Ondas: {0}</T>
       <T id="CHALLENGE_TEAMS_ENABLED" l="0">Times: ativados</T>
       <T id="CHALLENGE_PLAYERS_LABEL" l="0">Jogadores:</T>
+      <T id="CHALLENGE_LOADOUTS" l="0">Equipamentos</T>
       <T id="CHALLENGE_AI_LABEL" l="0">IA {0}</T>
       <T id="CHALLENGE_HUMAN_LABEL" l="0">Humano</T>
       <T id="CHALLENGE_START" l="0">INICIAR DESAFIO</T>

@@ -8,6 +8,7 @@
 	"Ammo": 1,
 	"ReloadDelay": 2,
     "TargetingMode": "First",
+	"ProjectileMotion": "Laser",
     "ProjectileSprite": "laser",
 	"DisplaySprite": "lazorbeam",
 	"SpecialEffects": [
@@ -15,6 +16,7 @@
 	    "Type": "LaserBeam",
 		"TravelEntireRow": false,
 	    "Extension": 4,
+		"Sprite": "laser",
 		"Audio": "laser"
 	  }
 	],

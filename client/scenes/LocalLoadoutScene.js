@@ -9,6 +9,7 @@ import GlobalLocalization from '../utils/LocalizationManager.js';
 import DefenceFactory from '../utils/factories/DefenceFactory.js';
 import MonsterFactory from '../utils/factories/MonsterFactory.js';
 import PuddleFactory from '../utils/factories/PuddleFactory.js';
+import SpriteFactory from '../utils/factories/SpriteFactory.js';
 
 export default class LocalLoadoutScene extends Phaser.Scene {
     constructor() {
@@ -247,6 +248,32 @@ export default class LocalLoadoutScene extends Phaser.Scene {
         return colors[rarity] || 0xffffff;
     }
 
+    _resolveUnitSpriteKey(unitData, spriteType, fallbackKey, spriteObj = null) {
+        const displaySprite = unitData?.DisplaySprite;
+        if (!displaySprite) return fallbackKey;
+        const rawKey = String(displaySprite).trim();
+        if (!rawKey) return fallbackKey;
+        const lowered = rawKey.toLowerCase();
+        if (lowered === 'null' || lowered === 'none' || lowered === 'undefined') return fallbackKey;
+
+        if (this.textures.exists(rawKey)) return rawKey;
+
+        const cachedKey = SpriteFactory.getCachedPrimarySpriteKey(spriteType, rawKey);
+        if (cachedKey && this.textures.exists(cachedKey)) return cachedKey;
+
+        if (spriteObj) {
+            SpriteFactory.getPrimarySpriteKey(spriteType, rawKey).then((resolvedKey) => {
+                if (!resolvedKey) return;
+                if (!spriteObj || !spriteObj.active || !spriteObj.scene) return;
+                if (spriteObj.scene !== this) return;
+                if (!this.textures.exists(resolvedKey)) return;
+                spriteObj.setTexture(resolvedKey);
+            });
+        }
+
+        return fallbackKey;
+    }
+
     refreshUnitGrid() {
         // Clear existing unit icons
         if (this.unitIcons) {
@@ -294,13 +321,14 @@ export default class LocalLoadoutScene extends Phaser.Scene {
             const bg = this.add.rectangle(x, y, iconSize - 4, iconSize - 4, 0x222222).setDepth(6);
 
             // Create unit sprite
-            const spriteKey = unitData.DisplaySprite;
             const fallbackKey = 'dice' + ((index % 6) + 1);
-            const useKey = (spriteKey && this.textures.exists(spriteKey)) ? spriteKey : fallbackKey;
-            const sprite = this.add.sprite(x, y, useKey)
+            const spriteType = this.currentTab === 'defence' ? 'defence' : 'monster';
+            const sprite = this.add.sprite(x, y, fallbackKey)
                 .setScale(0.4)
                 .setDepth(7)
                 .setInteractive();
+            const useKey = this._resolveUnitSpriteKey(unitData, spriteType, fallbackKey, sprite);
+            if (useKey !== fallbackKey) sprite.setTexture(useKey);
 
             // Ownership indicator (lock icon for unowned)
             let ownedIndicator = null;
@@ -433,12 +461,13 @@ export default class LocalLoadoutScene extends Phaser.Scene {
         }
 
         // Unit Sprite (larger)
-        const spriteKey = unitData.DisplaySprite;
         const fallbackKey = 'dice1';
-        const useKey = (spriteKey && this.textures.exists(spriteKey)) ? spriteKey : fallbackKey;
-        const largeSprite = this.add.sprite(modalX, currentY, useKey)
+        const spriteType = this.currentTab === 'defence' ? 'defence' : 'monster';
+        const largeSprite = this.add.sprite(modalX, currentY, fallbackKey)
             .setScale(0.8)
             .setDepth(52);
+        const useKey = this._resolveUnitSpriteKey(unitData, spriteType, fallbackKey, largeSprite);
+        if (useKey !== fallbackKey) largeSprite.setTexture(useKey);
         this.statModal.add(largeSprite);
         currentY += 50;
 
@@ -1001,9 +1030,8 @@ _getUnitAbilities(unitData) {
 
             if (unit) {
                 const unitData = data[unit];
-                const spriteKey = unitData?.DisplaySprite;
                 const fallbackKey = 'dice' + ((i % 6) + 1);
-                const useKey = (spriteKey && this.textures.exists(spriteKey)) ? spriteKey : fallbackKey;
+                const spriteType = this.currentTab === 'defence' ? 'defence' : 'monster';
 
                 // Slot background
                 const slotBg = this.add.rectangle(x, y, 260, 45, 0x2a2a2a)
@@ -1011,9 +1039,11 @@ _getUnitAbilities(unitData) {
                     .setDepth(5);
 
                 // Unit sprite
-                const sprite = this.add.sprite(x - 100, y, useKey)
+                const sprite = this.add.sprite(x - 100, y, fallbackKey)
                     .setScale(0.35)
                     .setDepth(10);
+                const useKey = this._resolveUnitSpriteKey(unitData, spriteType, fallbackKey, sprite);
+                if (useKey !== fallbackKey) sprite.setTexture(useKey);
 
                 // Unit name
                 const nameText = this.add.text(x - 70, y, this._unitName ? this._unitName(unit, unitData) : (unitData?.FullName || unit), {
@@ -1076,9 +1106,21 @@ _getUnitAbilities(unitData) {
         return costs[rarity] || 0;
     }
 
-    addOwned(unit) {
-        const owned = this.currentTab === 'defence' ? this.ownedDefences : this.ownedMonsters;
-        if (!owned.includes(unit)) owned.push(unit);
+    addOwned(unit, tabOverride = null) {
+        const defData = DefenceFactory.defenceData || {};
+        const monData = MonsterFactory.monsterData || {};
+        const isDefence = tabOverride
+            ? tabOverride === 'defence'
+            : (this.currentTab === 'defence' || !!defData[unit]);
+        const owned = isDefence ? this.ownedDefences : this.ownedMonsters;
+        if (!owned.includes(unit)) {
+            owned.push(unit);
+            const data = isDefence ? defData[unit] : monData[unit];
+            const rarity = data?.Rarity;
+            if (rarity) {
+                try { GlobalAchievements.recordUnitUnlock(rarity); } catch (e) {}
+            }
+        }
     }
 
     setSlot(slotIndex, unit) {
@@ -1177,9 +1219,8 @@ _getUnitAbilities(unitData) {
             const displayCost = formatCompact(cost);
             const rarityColor = this.getRarityColor(rarity);
 
-            const spriteKey = data[key]?.DisplaySprite;
             const fallbackKey = 'dice' + ((idx % 6) + 1);
-            const iconKey = (spriteKey && this.textures.exists(spriteKey)) ? spriteKey : fallbackKey;
+            const spriteType = this.currentTab === 'defence' ? 'defence' : 'monster';
 
             // Card background with rarity color
             const cardBg = this.add.rectangle(itemX, itemY, cardW, cardH, 0x2a2a2a)
@@ -1188,7 +1229,9 @@ _getUnitAbilities(unitData) {
             this.shopGroup.add(cardBg);
 
             // Icon
-            const icon = this.add.sprite(itemX, itemY - 25, iconKey).setScale(0.5).setDepth(102);
+            const icon = this.add.sprite(itemX, itemY - 25, fallbackKey).setScale(0.5).setDepth(102);
+            const iconKey = this._resolveUnitSpriteKey(data[key], spriteType, fallbackKey, icon);
+            if (iconKey !== fallbackKey) icon.setTexture(iconKey);
             this.shopGroup.add(icon);
 
             // Name
@@ -1391,8 +1434,8 @@ _getUnitAbilities(unitData) {
         const allDef = Object.keys(DefenceFactory.defenceData || {});
         const allMon = Object.keys(MonsterFactory.monsterData || {});
 
-        this.ownedDefences = [...new Set([...this.ownedDefences, ...allDef])];
-        this.ownedMonsters = [...new Set([...this.ownedMonsters, ...allMon])];
+        allDef.forEach(key => this.addOwned(key, 'defence'));
+        allMon.forEach(key => this.addOwned(key, 'monster'));
 
         console.log('[DEV] Unlocked ALL units');
         this.saveData();
@@ -1405,12 +1448,12 @@ _getUnitAbilities(unitData) {
 
         if (defData[key]) {
             if (!this.ownedDefences.includes(key)) {
-                this.ownedDefences.push(key);
+                this.addOwned(key, 'defence');
                 console.log(`[DEV] Unlocked Defence: ${key}`);
             }
         } else if (monData[key]) {
             if (!this.ownedMonsters.includes(key)) {
-                this.ownedMonsters.push(key);
+                this.addOwned(key, 'monster');
                 console.log(`[DEV] Unlocked Monster: ${key}`);
             }
         } else {

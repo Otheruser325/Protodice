@@ -8,6 +8,7 @@
 	"Ammo": 1,
 	"ReloadDelay": 2,
     "TargetingMode": "First",
+	"ProjectileMotion": "Lobbed",
     "ProjectileSprite": "mortar_shell",
 	"DisplaySprite": "mortar",
 	"SpecialEffects": [ 
@@ -15,7 +16,7 @@
 	    "Type": "AreaOfEffect",
 		"Value": "1x3",
 		"SplashFactor": 1.0,
-		"Sprite": "explosion.png",
+		"Sprite": "explosion",
 		"Audio": "explosion",
 		"CondenseTargeting": true
 	  } 

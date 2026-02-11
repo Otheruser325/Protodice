@@ -4,6 +4,7 @@ import DefenceFactory from './DefenceFactory.js';
 import MonsterFactory from './MonsterFactory.js';
 import SpecialEffectFactory from './SpecialEffectFactory.js';
 import StatusEffectFactory from './StatusEffectFactory.js';
+import GlobalAudio from '../AudioManager.js';
 
 /**
  * Manages puddle definitions and runtime puddle objects.
@@ -264,7 +265,7 @@ export default class PuddleFactory {
                             (isMonster ? 'monster_death' : null) || 
                             'unit_death';
                         
-                        scene.sound.play(deathSound, { volume: 0.5 });
+                        GlobalAudio.playSfx(scene, deathSound, 0.5);
                     } catch (e) {
                         // Sound not available, continue silently
                     }

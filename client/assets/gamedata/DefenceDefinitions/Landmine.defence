@@ -8,6 +8,7 @@
     "Ammo": null,
     "ReloadDelay": null,
     "TargetingMode": "None",
+    "ProjectileMotion": "None",
     "ProjectileSprite": "null",
     "DisplaySprite": "landmine",
     "SpecialEffects": [
@@ -15,7 +16,7 @@
             "Type": "DeathEffect",
             "Radius": "3x3",
             "DeathDamage": 30,
-            "Sprite": "explosion.png",
+            "Sprite": "explosion",
             "Audio": "mine_explosion"
         }
     ],

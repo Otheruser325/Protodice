@@ -9,6 +9,7 @@
 	"Ammo": 1,
 	"ReloadDelay": 1,
     "TargetingMode": "First",
+    "ProjectileMotion": "Straight",
     "ProjectileSprite": "love_arrow",
 	"DisplaySprite": "cupid",
 	"SpecialEffects": [],

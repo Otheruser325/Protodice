@@ -1,0 +1,8 @@
+﻿<?xml version="1.0" ?>
+<SpriteInformation>
+    <FrameInformation name="mortar_shell" texh="56" texw="90" type="png">
+        <Animation name="mortar_shell">
+            <Cell ah="56" aw="90" ax="0" ay="0" h="56" name="mortar_shell" w="90" x="0" y="0"/>
+        </Animation>
+    </FrameInformation>
+</SpriteInformation>

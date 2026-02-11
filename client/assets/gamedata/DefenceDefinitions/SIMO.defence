@@ -8,6 +8,7 @@
     "Ammo": 1,
     "ReloadDelay": 2,
     "TargetingMode": "Weak",
+    "ProjectileMotion": "Straight",
     "ProjectileSprite": "tracer",
     "DisplaySprite": "simo",
     "SpecialEffects": [],

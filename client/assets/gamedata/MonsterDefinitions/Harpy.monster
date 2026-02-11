@@ -9,9 +9,11 @@
 	"Ammo": 2,
 	"ReloadDelay": 2,
     "TargetingMode": "First",
+	"ProjectileMotion": "None",
     "ProjectileSprite": "null",
 	"DisplaySprite": "harpy",
 	"SpecialEffects": [],
     "StatusEffects": [],
+	"CanJump": true,
 	"IsProto": true
 }

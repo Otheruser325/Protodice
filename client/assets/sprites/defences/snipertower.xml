@@ -1,0 +1,8 @@
+﻿<?xml version="1.0" ?>
+<SpriteInformation>
+    <FrameInformation name="snipertower" texh="144" texw="96" type="png">
+        <Animation name="snipertower">
+            <Cell ah="144" aw="96" ax="0" ay="0" h="144" name="snipertower" w="96" x="0" y="0"/>
+        </Animation>
+    </FrameInformation>
+</SpriteInformation>

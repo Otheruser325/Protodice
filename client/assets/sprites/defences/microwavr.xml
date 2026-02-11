@@ -1,0 +1,8 @@
+﻿<?xml version="1.0" ?>
+<SpriteInformation>
+    <FrameInformation name="microwavr" texh="136" texw="120" type="png">
+        <Animation name="microwavr">
+            <Cell ah="136" aw="120" ax="0" ay="0" h="136" name="microwavr" w="120" x="0" y="0"/>
+        </Animation>
+    </FrameInformation>
+</SpriteInformation>

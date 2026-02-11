@@ -105,6 +105,7 @@ class Defence {
 	    this.lifespan = data.Lifespan || null;
         this.targetingMode = data.TargetingMode;
         this.projectileSprite = data.ProjectileSprite;
+        this.projectileMotion = data.ProjectileMotion || data.projectileMotion || null;
         this.displaySprite = data.DisplaySprite;
         this.specialEffects = data.SpecialEffects || [];
         this.statusEffects = data.StatusEffects || [];

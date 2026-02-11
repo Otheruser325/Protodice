@@ -8,6 +8,7 @@
     "Ammo": null,
     "ReloadDelay": null,
     "TargetingMode": "None",
+    "ProjectileMotion": "None",
     "ProjectileSprite": "null",
     "DisplaySprite": "forcefield",
     "SpecialEffects": [

@@ -8,6 +8,7 @@
 	"Ammo": 4,
 	"ReloadDelay": 3,
     "TargetingMode": "First",
+	"ProjectileMotion": "Lobbed",
     "ProjectileSprite": "rocket",
 	"DisplaySprite": "rocketlauncher",
 	"SpecialEffects": [ 
@@ -15,7 +16,7 @@
 	    "Type": "AreaOfEffect",
 		"Value": "1x3",
 		"SplashFactor": 1.0,
-		"Sprite": "explosion.png",
+		"Sprite": "explosion",
 		"Audio": "explosion",
 		"CondenseTargeting": true
 	  }

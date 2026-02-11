@@ -8,6 +8,7 @@
 	"Ammo": 1,
 	"ReloadDelay": 4,
     "TargetingMode": "First",
+	"ProjectileMotion": "Lobbed",
     "ProjectileSprite": "nuclear_rocket",
 	"DisplaySprite": "radiallauncher",
 	"SpecialEffects": [

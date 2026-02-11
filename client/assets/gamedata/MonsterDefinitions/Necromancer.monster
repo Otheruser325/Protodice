@@ -4,11 +4,12 @@
 	"Rarity": "Epic",
 	"Health": 30,
     "Damage": 10,
-    "Range": 2,
+    "Range": 3,
 	"Speed": 1,
 	"Ammo": 1,
 	"ReloadDelay": 2,
     "TargetingMode": "First",
+	"ProjectileMotion": "None",
     "ProjectileSprite": "hex",
 	"DisplaySprite": "necromancer",
 	"SpecialEffects": [

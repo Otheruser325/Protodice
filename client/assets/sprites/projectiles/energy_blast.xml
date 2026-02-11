@@ -1,0 +1,8 @@
+﻿<?xml version="1.0" ?>
+<SpriteInformation>
+    <FrameInformation name="energy_blast" texh="86" texw="110" type="png">
+        <Animation name="energy_blast">
+            <Cell ah="86" aw="110" ax="0" ay="0" h="86" name="energy_blast" w="110" x="0" y="0"/>
+        </Animation>
+    </FrameInformation>
+</SpriteInformation>

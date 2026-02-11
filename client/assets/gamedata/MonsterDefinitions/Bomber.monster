@@ -9,6 +9,7 @@
 	"Ammo": 1,
 	"ReloadDelay": 2,
     "TargetingMode": "First",
+	"ProjectileMotion": "Lobbed",
     "ProjectileSprite": "bomb",
 	"DisplaySprite": "bomber",
 	"SpecialEffects": [ 
@@ -16,7 +17,7 @@
 	    "Type": "AreaOfEffect",
 		"Value": "1x3",
 		"SplashFactor": 1.0,
-		"Sprite": "explosion.png",
+		"Sprite": "explosion",
 		"CondenseTargeting": false
 	  } 
 	],

@@ -9,6 +9,7 @@
 	"Ammo": 1,
 	"ReloadDelay": 1,
     "TargetingMode": "First",
+	"ProjectileMotion": "None",
     "ProjectileSprite": "null",
 	"DisplaySprite": "orc",
 	"SpecialEffects": [],

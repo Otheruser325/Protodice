@@ -8,6 +8,7 @@
     "Ammo": 1,
     "ReloadDelay": 3,
     "TargetingMode": "First",
+    "ProjectileMotion": "Lobbed",
     "ProjectileSprite": "shock_bomb",
     "DisplaySprite": "shocklauncher",
     "SpecialEffects": [

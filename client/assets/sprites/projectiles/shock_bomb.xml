@@ -1,0 +1,8 @@
+﻿<?xml version="1.0" ?>
+<SpriteInformation>
+    <FrameInformation name="shock_bomb" texh="82" texw="108" type="png">
+        <Animation name="shock_bomb">
+            <Cell ah="82" aw="108" ax="0" ay="0" h="82" name="shock_bomb" w="108" x="0" y="0"/>
+        </Animation>
+    </FrameInformation>
+</SpriteInformation>

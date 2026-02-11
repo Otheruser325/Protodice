@@ -103,9 +103,10 @@ class Monster {
         this.ammo = data.Ammo;
         this.reloadDelay = data.ReloadDelay;
 		this.hasLifespan = data.HasLifespan || false;
-	    this.lifespan = data.Lifespan || null;
+        this.lifespan = data.Lifespan || null;
         this.targetingMode = data.TargetingMode;
         this.projectileSprite = data.ProjectileSprite;
+        this.projectileMotion = data.ProjectileMotion || data.projectileMotion || null;
         this.displaySprite = data.DisplaySprite;
         this.specialEffects = data.SpecialEffects || [];
         this.statusEffects = data.StatusEffects || [];

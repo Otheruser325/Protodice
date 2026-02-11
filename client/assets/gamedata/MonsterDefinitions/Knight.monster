@@ -9,6 +9,7 @@
 	"Ammo": 1,
 	"ReloadDelay": 2,
     "TargetingMode": "First",
+	"ProjectileMotion": "None",
     "ProjectileSprite": "slash",
 	"DisplaySprite": "knight",
 	"SpecialEffects": [

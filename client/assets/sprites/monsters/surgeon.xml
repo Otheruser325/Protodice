@@ -1,0 +1,8 @@
+﻿<?xml version="1.0" ?>
+<SpriteInformation>
+    <FrameInformation name="surgeon" texh="128" texw="128" type="png">
+        <Animation name="surgeon">
+            <Cell ah="128" aw="128" ax="0" ay="0" h="128" name="surgeon" w="128" x="0" y="0"/>
+        </Animation>
+    </FrameInformation>
+</SpriteInformation>

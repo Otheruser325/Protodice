@@ -1,0 +1,8 @@
+﻿<?xml version="1.0" ?>
+<SpriteInformation>
+    <FrameInformation name="shield_burst" texh="64" texw="64" type="png">
+        <Animation name="shield_burst">
+            <Cell ah="64" aw="64" ax="0" ay="0" h="64" name="shield_burst" w="64" x="0" y="0"/>
+        </Animation>
+    </FrameInformation>
+</SpriteInformation>

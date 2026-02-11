@@ -8,6 +8,7 @@
 	"Ammo": 1,
 	"ReloadDelay": 1,
     "TargetingMode": "First",
+	"ProjectileMotion": "Straight",
     "ProjectileSprite": "tracer",
 	"DisplaySprite": "snipertower",
 	"SpecialEffects": [],

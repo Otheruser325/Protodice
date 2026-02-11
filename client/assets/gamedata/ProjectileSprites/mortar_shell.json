@@ -1,0 +1,37 @@
+﻿{
+    "actors":  [
+                   {
+                       "Alignment":  [
+                                         0.5,
+                                         0.5
+                                     ],
+                       "Alpha":  1,
+                       "Angle":  0,
+                       "Flip":  0,
+                       "Position":  [
+                                        0,
+                                        0
+                                    ],
+                       "Scale":  [
+                                     1,
+                                     1
+                                 ],
+                       "Shown":  true,
+                       "sprite":  "mortar_shell",
+                       "type":  1,
+                       "uid":  1
+                   }
+               ],
+    "customvariables":  null,
+    "events":  null,
+    "stageOptions":  {
+                         "SpriteInfo":  [
+                                            {
+                                                "SpriteInfo":  "mortar_shell",
+                                                "Texture":  "projectiles"
+                                            }
+                                        ],
+                         "StageLength":  0.2
+                     },
+    "timelines":  null
+}

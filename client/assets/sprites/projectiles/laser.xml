@@ -1,0 +1,8 @@
+﻿<?xml version="1.0" ?>
+<SpriteInformation>
+    <FrameInformation name="laser" texh="36" texw="100" type="png">
+        <Animation name="laser">
+            <Cell ah="36" aw="100" ax="0" ay="0" h="36" name="laser" w="100" x="0" y="0"/>
+        </Animation>
+    </FrameInformation>
+</SpriteInformation>

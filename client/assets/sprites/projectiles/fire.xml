@@ -1,0 +1,8 @@
+﻿<?xml version="1.0" ?>
+<SpriteInformation>
+    <FrameInformation name="fire" texh="70" texw="108" type="png">
+        <Animation name="fire">
+            <Cell ah="70" aw="108" ax="0" ay="0" h="70" name="fire" w="108" x="0" y="0"/>
+        </Animation>
+    </FrameInformation>
+</SpriteInformation>

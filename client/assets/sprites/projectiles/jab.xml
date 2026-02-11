@@ -1,0 +1,8 @@
+﻿<?xml version="1.0" ?>
+<SpriteInformation>
+    <FrameInformation name="jab" texh="65" texw="114" type="png">
+        <Animation name="jab">
+            <Cell ah="65" aw="114" ax="0" ay="0" h="65" name="jab" w="114" x="0" y="0"/>
+        </Animation>
+    </FrameInformation>
+</SpriteInformation>

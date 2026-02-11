@@ -1,0 +1,8 @@
+﻿<?xml version="1.0" ?>
+<SpriteInformation>
+    <FrameInformation name="shredder" texh="92" texw="168" type="png">
+        <Animation name="shredder">
+            <Cell ah="92" aw="168" ax="0" ay="0" h="92" name="shredder" w="168" x="0" y="0"/>
+        </Animation>
+    </FrameInformation>
+</SpriteInformation>

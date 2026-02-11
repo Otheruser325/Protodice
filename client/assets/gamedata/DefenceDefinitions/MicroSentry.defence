@@ -10,6 +10,7 @@
     "TargetingMode": "First",
 	"HasLifespan": true,
 	"Lifespan": 5,
+	"ProjectileMotion": "Straight",
     "ProjectileSprite": "bullet",
 	"DisplaySprite": "microsentry",
 	"SpecialEffects": [],

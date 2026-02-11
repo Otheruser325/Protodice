@@ -5,11 +5,129 @@ import MonsterFactory from './MonsterFactory.js';
 import PuddleFactory from './PuddleFactory.js';
 import StatusEffectFactory from './StatusEffectFactory.js';
 import StatusEffectVisuals from '../StatusEffectVisuals.js';
+import GlobalAudio from '../AudioManager.js';
 
 /**
  * Handles special effect logic (summons, AoE, healing, force fields, etc.).
  */
 export default class SpecialEffectFactory {
+    /**
+     * Determines if a unit has the BlockAllLanes special effect.
+     * @param {Object} unit - Acting unit
+     * @returns {boolean} True if the units are enemies
+     */
+    static _hasBlockAllLanes(unit) {
+        return !!unit?.specialEffects?.some(e => e.Type === 'BlockAllLanes');
+    }
+
+    /**
+     * Determines if the attacker's projectile motion or special effects indicate a laser attack.
+     * @param {Object} attacker - Acting unit
+     * @returns {boolean} True if the units are enemies
+     */
+    static _isLaserAttack(attacker) {
+        if (!attacker) return false;
+        const motion = String(attacker.projectileMotion ?? attacker.ProjectileMotion ?? '').trim().toLowerCase();
+        if (motion === 'laser') return true;
+        return !!attacker.specialEffects?.some(e => e.Type === 'LaserBeam');
+    }
+
+    /**
+     * Synchronizes the BlockAllLanes force field column for a unit.
+     * Determines if there is an active BlockAllLanes force field between attacker and target, and returns the blocking column if so.
+     * @param {Object} unit - Candidate target unit
+     * @param {Object} scene - Active scene
+     * @param {number} newCol - New column index
+     */
+    static _syncBlockAllLanesColumn(unit, scene, newCol) {
+        if (!unit || !scene || !Number.isFinite(newCol)) return;
+        scene.forceFields = scene.forceFields || {};
+
+        // Remove unit from any existing column entries
+        try {
+            Object.keys(scene.forceFields).forEach(key => {
+                const colEntry = scene.forceFields[key];
+                if (Array.isArray(colEntry)) {
+                    scene.forceFields[key] = colEntry.filter(x => x !== unit);
+                    if (scene.forceFields[key].length === 0) delete scene.forceFields[key];
+                } else if (colEntry === unit) {
+                    delete scene.forceFields[key];
+                }
+            });
+        } catch (e) {}
+
+        // Add unit to the new column
+        if (!Array.isArray(scene.forceFields[newCol])) scene.forceFields[newCol] = [];
+        if (!scene.forceFields[newCol].includes(unit)) scene.forceFields[newCol].push(unit);
+
+        // Move or recreate shield VFX to match the new column
+        try {
+            const gridRows = scene.GRID_ROWS || (scene.grid ? scene.grid.length : 5);
+            const canReuse = Array.isArray(unit._shieldVFX) && unit._shieldVFX.length === gridRows;
+            if (!canReuse) {
+                if (Array.isArray(unit._shieldVFX)) {
+                    unit._shieldVFX.forEach(spr => {
+                        try { spr.destroy(); } catch (e) {}
+                    });
+                }
+                unit._shieldVFX = [];
+                for (let r = 0; r < gridRows; r++) {
+                    if (typeof scene.getTileXY === 'function') {
+                        const t = scene.getTileXY(r, newCol);
+                        const shieldSpr = scene.add.sprite(t.x, t.y, 'shield');
+                        shieldSpr.setOrigin(0.5, 0.5);
+                        shieldSpr.setScale(0.9);
+                        shieldSpr.setAlpha(0.7);
+                        unit._shieldVFX.push(shieldSpr);
+                    }
+                }
+            } else {
+                for (let r = 0; r < unit._shieldVFX.length; r++) {
+                    const spr = unit._shieldVFX[r];
+                    if (!spr || typeof scene.getTileXY !== 'function') continue;
+                    const t = scene.getTileXY(r, newCol);
+                    spr.setPosition(t.x, t.y);
+                }
+            }
+        } catch (e) {
+            if (DEBUG_MODE) console.warn('[BlockAllLanes] shield VFX move failed', e);
+        }
+    }
+
+    /**
+     * Determines if there is an active BlockAllLanes force field between attacker and target, and returns the blocking column if so.
+     * @param {Object} attacker - Acting unit
+     * @param {Object} unit - Candidate target unit
+     * @param {Object} scene - Active scene
+     * @returns {boolean} True if the units are enemies
+     */
+    static getBlockAllLanesIntercept(attacker, target, scene) {
+        if (!scene || !attacker || !target || !scene.forceFields) return null;
+        if (!attacker.position || !target.position) return null;
+        if (SpecialEffectFactory._isLaserAttack(attacker)) return null;
+
+        const dir = Math.sign(target.position.col - attacker.position.col) || 1;
+        const maxCol = scene.grid?.[0]?.length ?? scene.GRID_COLS ?? 9;
+        let c = attacker.position.col + dir;
+        while ((dir > 0 && c <= target.position.col) || (dir < 0 && c >= target.position.col)) {
+            const colEntry = scene.forceFields[c];
+            const ffList = Array.isArray(colEntry) ? colEntry : (colEntry ? [colEntry] : []);
+            for (const ff of ffList) {
+                if (!ff || ff.currentHealth <= 0) continue;
+                if (!SpecialEffectFactory._isEnemyUnit(attacker, ff)) continue;
+                const hasBlockAllLanes = ff.specialEffects?.some(e => e.Type === 'BlockAllLanes');
+                if (!hasBlockAllLanes) continue;
+                const shieldValue = Number.isFinite(ff._blockShield) ? ff._blockShield : Number(ff.ShieldValue || 0);
+                if (shieldValue > 0) {
+                    return { row: attacker.position.row, col: c };
+                }
+            }
+            c += dir;
+            if (c < 0 || c >= maxCol) break;
+        }
+        return null;
+    }
+
     /**
      * Check if two units are enemies (defence vs monster).
      * @param {Object} attacker - Acting unit
@@ -21,6 +139,76 @@ export default class SpecialEffectFactory {
         const atkIsDef = (attacker.typeName in (DefenceFactory.defenceData || {}));
         if (atkIsDef) return (unit.typeName in (MonsterFactory.monsterData || {}));
         return (unit.typeName in (DefenceFactory.defenceData || {}));
+    }
+
+    /**
+     * Normalize sprite keys (strip extensions) and ensure texture exists.
+     * @param {Phaser.Scene} scene - Active scene
+     * @param {string} spriteKey - Raw sprite key (may include extension)
+     * @returns {string|null} Resolved sprite key or null if not usable
+     */
+    static _resolveSpriteKey(scene, spriteKey) {
+        if (!spriteKey || !scene || !scene.textures) return spriteKey || null;
+        const raw = String(spriteKey).trim();
+        if (!raw) return null;
+        if (scene.textures.exists(raw)) return raw;
+        const base = raw.replace(/\.(png|jpg|jpeg|gif|webp)$/i, '');
+        if (base !== raw && scene.textures.exists(base)) return base;
+        return raw;
+    }
+
+    /**
+     * Spawns an effect sprite and ensure texture exists.
+     * @param {Phaser.Scene} scene - Active scene
+     * @param {string} spriteKey - Raw sprite key (may include extension)
+     * @param {number} x - X coordinate for sprite
+     * @param {number} y - Y coordinate for sprite
+     * @param {number} lifeMs - Life duration in milliseconds
+     * @returns {string|null} Resolved sprite key or null if not usable
+     */
+    static _spawnEffectSprite(scene, spriteKey, x, y, lifeMs = 400) {
+        if (!scene || !scene.add) return null;
+        const resolved = SpecialEffectFactory._resolveSpriteKey(scene, spriteKey);
+        if (!resolved) return null;
+
+        let finalKey = resolved;
+        if (!scene.textures.exists(finalKey)) {
+            const lower = String(finalKey).toLowerCase();
+            if (lower.includes('explosion') && scene.textures.exists('explosion')) {
+                finalKey = 'explosion';
+            } else if (lower.includes('radiation') && scene.textures.exists('radioactive_waste')) {
+                finalKey = 'radioactive_waste';
+            } else {
+                return null;
+            }
+        }
+
+        let spr = null;
+        try {
+            spr = scene.add.sprite(x, y, finalKey);
+        } catch (e) {
+            return null;
+        }
+
+        const tryDestroy = () => {
+            try { spr.destroy(); } catch (e) {}
+        };
+
+        if (finalKey === 'explosion' && scene.anims && scene.anims.exists('explosion')) {
+            try {
+                spr.play('explosion');
+                spr.once('animationcomplete', tryDestroy);
+                return spr;
+            } catch (e) {
+                /* fall through to timed destroy */
+            }
+        }
+
+        if (scene.time && typeof scene.time.delayedCall === 'function') {
+            scene.time.delayedCall(lifeMs, tryDestroy);
+        }
+
+        return spr;
     }
 
     /**
@@ -98,12 +286,8 @@ export default class SpecialEffectFactory {
         }
 
         // Play summon sound effect if available
-        if (summonEffect.Audio && scene && scene.sound) {
-            try {
-                scene.sound.play(summonEffect.Audio, { volume: 0.6 });
-            } catch (e) {
-                if (DEBUG_MODE) console.warn('[Summon] sound effect failed', e);
-            }
+        if (summonEffect.Audio) {
+            GlobalAudio.playSfx(scene, summonEffect.Audio, 0.6);
         }
 
         for (let i = 0; i < Math.min(spawnCount, positions.length); i++) {
@@ -156,15 +340,21 @@ export default class SpecialEffectFactory {
                     };
                     if (attacker && attacker._owner !== undefined) newly._owner = attacker._owner;
 
-                    // create sprite (defensive: check newly.displaySprite)
-                    const spriteKey = newly.displaySprite || null;
                     const t = (typeof scene.getTileXY === 'function') ? scene.getTileXY(r, c) : {
                         x: 300 + c * 60,
                         y: 150 + r * 60
                     };
-                    const spr = scene.add.sprite(t.x, t.y + ((newly.displaySprite && newly.speed) ? 25 : 0), spriteKey || 'dice1').setInteractive();
-                    spr.setOrigin(0.5, 0.5);
-                    if (scene.TILE_SIZE && spr.setDisplaySize) {
+                    const offsetY = (newly.displaySprite && newly.speed) ? 25 : 0;
+                    let spr = null;
+                    if (scene && typeof scene.ensureSpriteForUnit === 'function') {
+                        spr = scene.ensureSpriteForUnit(newly, t.x, t.y + offsetY, false);
+                    } else {
+                        const spriteKey = newly.displaySprite || 'dice1';
+                        spr = scene.add.sprite(t.x, t.y + offsetY, spriteKey);
+                    }
+                    if (spr && spr.setInteractive) spr.setInteractive();
+                    if (spr && spr.setOrigin) spr.setOrigin(0.5, 0.5);
+                    if (scene.TILE_SIZE && spr && spr.setDisplaySize) {
                         const size = Math.max(8, Math.floor(scene.TILE_SIZE * 0.8));
                         spr.setDisplaySize(size, size);
                     }
@@ -298,6 +488,8 @@ export default class SpecialEffectFactory {
             
             // Check if other is alive and in range
             if (other.currentHealth <= 0) continue;
+            // DamageBooster only applies to allies (not enemies)
+            if (SpecialEffectFactory._isEnemyUnit(other, unit)) continue;
             
             let r = 1,
                 c = 1;
@@ -322,7 +514,7 @@ export default class SpecialEffectFactory {
         }
 
         if (totalMultiplier !== 1.0) {
-            unit._damageMultiplier = (unit._damageMultiplier || 1) * totalMultiplier;
+            unit._damageMultiplier = totalMultiplier;
         } else {
             delete unit._damageMultiplier;
         }
@@ -442,7 +634,7 @@ export default class SpecialEffectFactory {
         // Play armor sound if damage was reduced by armor
         if (armorReducedDamage && scene && scene.sound && dmg > 0) {
             try {
-                scene.sound.play('armor', { volume: 0.6 });
+                GlobalAudio.playSfx(scene, 'armor', 0.6);
             } catch (e) {
                 if (DEBUG_MODE) console.warn('[Armor][Sound] failed to play armor sound', e);
             }
@@ -544,11 +736,11 @@ export default class SpecialEffectFactory {
                 const attackerCol = Number.isFinite(attacker.position?.col) ? attacker.position.col : 0;
                 const range = Math.max(1, Number(attacker.range || 0) || 1);
 
-                // Build lane order: center, upper, lower (like Threepeater from PvZ)
+                // Build lane order: center, bottom, top (prioritizing downward)
                 const laneOrder = [];
                 if (mfShots >= 1) laneOrder.push(centerRow);
-                if (mfShots >= 2 && centerRow - 1 >= 0) laneOrder.push(centerRow - 1);
-                if (mfShots >= 3 && centerRow + 1 < maxRows) laneOrder.push(centerRow + 1);
+                if (mfShots >= 2 && centerRow + 1 < maxRows) laneOrder.push(centerRow + 1);
+                if (mfShots >= 3 && centerRow - 1 >= 0) laneOrder.push(centerRow - 1);
                 const allLanes = [centerRow, centerRow - 1, centerRow + 1].filter(r => r >= 0 && r < maxRows);
 
                 const pickRowTarget = (row) => {
@@ -949,14 +1141,13 @@ export default class SpecialEffectFactory {
 
             if (scene && laser.Sprite && typeof scene.getTileXY === 'function') {
                 const t = scene.getTileXY(target.position.row, target.position.col);
-                const s = scene.add.sprite(t.x, t.y, laser.Sprite);
-                scene.time.delayedCall(400, () => s.destroy());
+                SpecialEffectFactory._spawnEffectSprite(scene, laser.Sprite, t.x, t.y, 400);
             }
 
             // Play laser sound effect if defined
             if (laser.Audio && scene && scene.sound) {
                 try {
-                    scene.sound.play(laser.Audio, { volume: 0.6 });
+                    GlobalAudio.playSfx(scene, laser.Audio, 0.6);
                 } catch (e) {
                     if (DEBUG_MODE) console.warn('[Laser] sound effect failed', e);
                 }
@@ -1059,14 +1250,13 @@ export default class SpecialEffectFactory {
                 // visual sprite if available
                 if (scene && aoe.Sprite && typeof scene.getTileXY === 'function') {
                     const t = scene.getTileXY(centerRow, centerCol);
-                    const s = scene.add.sprite(t.x, t.y, aoe.Sprite);
-                    scene.time.delayedCall(400, () => s.destroy());
+                    SpecialEffectFactory._spawnEffectSprite(scene, aoe.Sprite, t.x, t.y, 400);
                 }
 
                 // Play AoE sound effect if defined
                 if (aoe.Audio && scene && scene.sound) {
                     try {
-                        scene.sound.play(aoe.Audio, { volume: 0.6 });
+                        GlobalAudio.playSfx(scene, aoe.Audio, 0.6);
                     } catch (e) {
                         if (DEBUG_MODE) console.warn('[AoE] sound effect failed', e);
                     }
@@ -1085,7 +1275,7 @@ export default class SpecialEffectFactory {
                 // Play lifesteal sound effect
                 if (scene && scene.sound) {
                     try {
-                        scene.sound.play('lifesteal', { volume: 0.6 });
+                        GlobalAudio.playSfx(scene, 'lifesteal', 0.6);
                     } catch (e) {
                         if (DEBUG_MODE) console.warn('[Lifesteal][Sound] failed to play lifesteal sound', e);
                     }
@@ -1259,6 +1449,7 @@ export default class SpecialEffectFactory {
                 if (isAlly(tgt)) {
                     const heal = scaledDeathHealing;
                     tgt.currentHealth = Math.min(tgt.health, (tgt.currentHealth || 0) + heal);
+                    CombatFactory._showHealing(scene, tgt, heal);
                     if (DEBUG_MODE) console.log('[DeathEffect][Healing] healed ally', tgt.typeName, 'heal=', heal);
                 } else {
                     if (DEBUG_MODE) console.log('[DeathEffect][Healing] skipped enemy', tgt.typeName);
@@ -1270,6 +1461,13 @@ export default class SpecialEffectFactory {
         for (const u of unitsKilledByDeathDamage) {
             try {
                 if (u._beingRemoved) continue;
+                try {
+                    if (!u._deathEffectTriggered) {
+                        SpecialEffectFactory.handleOnDeath(u, scene);
+                    }
+                } catch (e) {
+                    if (DEBUG_MODE) console.warn('[DeathEffect] chained handleOnDeath failed', e);
+                }
                 u._beingRemoved = true;
                 
                 // Clean up status effect visuals first
@@ -1305,6 +1503,11 @@ export default class SpecialEffectFactory {
                 if (Array.isArray(scene.units)) {
                     scene.units = scene.units.filter(unit => unit !== u);
                 }
+
+                if (typeof scene.addHistoryEntry === 'function') {
+                    const unitName = u.fullName || u.typeName || 'Unit';
+                    scene.addHistoryEntry(`${unitName} was defeated`);
+                }
                 
                 if (DEBUG_MODE) console.log('[DeathEffect] cleaned up unit killed by death damage', u.typeName);
             } catch (e) {
@@ -1315,14 +1518,13 @@ export default class SpecialEffectFactory {
         // optional visual
         if (scene && effect.Sprite && typeof scene.getTileXY === 'function') {
             const t = scene.getTileXY(centerRow, centerCol);
-            const s = scene.add.sprite(t.x, t.y, effect.Sprite);
-            scene.time.delayedCall(600, () => s.destroy());
+            SpecialEffectFactory._spawnEffectSprite(scene, effect.Sprite, t.x, t.y, 600);
         }
 
         // Play death sound effect if defined
         if (effect.Audio && scene && scene.sound) {
             try {
-                scene.sound.play(effect.Audio, { volume: 0.6 });
+                GlobalAudio.playSfx(scene, effect.Audio, 0.6);
             } catch (e) {
                 if (DEBUG_MODE) console.warn('[DeathEffect] sound effect failed', e);
             }
@@ -1477,6 +1679,7 @@ export default class SpecialEffectFactory {
                     // Death healing - only hits allies
                     if (scaledHeal > 0 && shouldInclude(u, true)) {
                         u.currentHealth = Math.min(u.health, (u.currentHealth || u.health) + scaledHeal);
+                        CombatFactory._showHealing(scene, u, scaledHeal);
                     }
 
                     // Death statuses - apply to both allies and enemies (but not self)
@@ -1500,6 +1703,13 @@ export default class SpecialEffectFactory {
         for (const u of unitsToCleanup) {
             try {
                 if (u._beingRemoved) continue;
+                try {
+                    if (!u._deathEffectTriggered) {
+                        SpecialEffectFactory.handleOnDeath(u, scene);
+                    }
+                } catch (e) {
+                    if (DEBUG_MODE) console.warn('[DeathEffect] chained handleOnDeath failed', e);
+                }
                 u._beingRemoved = true;
 
                 // Clean up status effect visuals first
@@ -1535,6 +1745,11 @@ export default class SpecialEffectFactory {
                 if (Array.isArray(scene.units)) {
                     scene.units = scene.units.filter(unit => unit !== u);
                 }
+
+                if (typeof scene.addHistoryEntry === 'function') {
+                    const unitName = u.fullName || u.typeName || 'Unit';
+                    scene.addHistoryEntry(`${unitName} was defeated`);
+                }
                 
                 if (DEBUG_MODE) console.log('[DeathEffect] cleaned up unit killed by death damage', u.typeName);
             } catch (e) {
@@ -1546,15 +1761,14 @@ export default class SpecialEffectFactory {
         try {
             if (death.Sprite && typeof scene.getTileXY === 'function') {
                 const t = scene.getTileXY(centerRow, centerCol);
-                const s = scene.add.sprite(t.x, t.y, death.Sprite);
-                scene.time.delayedCall(400, () => s.destroy());
+                SpecialEffectFactory._spawnEffectSprite(scene, death.Sprite, t.x, t.y, 400);
             }
         } catch (e) {}
 
         // Play death sound effect if defined
         if (death.Audio && scene && scene.sound) {
             try {
-                scene.sound.play(death.Audio, { volume: 0.6 });
+                GlobalAudio.playSfx(scene, death.Audio, 0.6);
             } catch (e) {
                 if (DEBUG_MODE) console.warn('[DeathEffect] sound effect failed', e);
             }
@@ -1588,7 +1802,7 @@ export default class SpecialEffectFactory {
         if (roll > chance) {
             // FAILED: increment count for failed attempt
             unit._reviveCount++;
-            if (DEBUG_MODE) console.log('[Revive] chance failed', unit.typeName, 'roll=', roll, 'chance=', chance, 'count=', unit._reviveCount, '/', maxRevives);
+            if (DEBUG_MODE && unit._reviveCount === 1) console.log('[Revive] chance failed (stopping logs)', unit.typeName, 'roll=', roll, 'chance=', chance, 'count=', unit._reviveCount, '/', maxRevives);
             
             // If this was the last allowed attempt and it failed, ensure unit is cleaned up
             if (unit._reviveCount >= maxRevives) {
@@ -1643,7 +1857,7 @@ export default class SpecialEffectFactory {
         // Play revive sound effect
         try {
             if (scene.sound) {
-                scene.sound.play('revive', { volume: 0.7 });
+                GlobalAudio.playSfx(scene, 'revive', 0.7);
             }
         } catch (e) {}
 
@@ -1664,6 +1878,23 @@ export default class SpecialEffectFactory {
         unit.health = Math.max(1, Math.round(baseHealth * reviveMultiplier));
         unit.currentHealth = Math.max(1, Math.round(unit.health));
         unit.damage = Math.max(0, Math.round(baseDamage * damageMultiplier));
+
+        // CRITICAL FIX: Apply wave scaling to revived unit to get fully-scaled stats
+        // Revived units must have the same wave scaling as they had when originally placed
+        const isMonster = unit.typeName && (unit.typeName in (MonsterFactory.monsterData || {}));
+        if (isMonster && scene) {
+            const placementWave = CombatFactory.getUnitWave(unit, scene);
+            if (placementWave > 10) {
+                const waveScaling = CombatFactory.getWaveScalingFactor(placementWave, true);
+                if (waveScaling > 1) {
+                    // Apply wave scaling on top of revive multipliers
+                    unit.health = Math.round(unit.health * waveScaling);
+                    unit.currentHealth = Math.round(unit.currentHealth * waveScaling);
+                    unit.damage = Math.round(unit.damage * waveScaling);
+                    if (DEBUG_MODE) console.log('[Revive] wave scaling reapplied', unit.typeName, 'wave=', placementWave, 'factor=', waveScaling.toFixed(2));
+                }
+            }
+        }
 
         // Determine placement origin: prefer _lastPosition, then unit.position
         let placedRow = Number.isFinite(unit._lastPosition?.row) ? unit._lastPosition.row : (Number.isFinite(unit.position?.row) ? unit.position.row : undefined);
@@ -1879,6 +2110,7 @@ export default class SpecialEffectFactory {
         scene.forceFields = scene.forceFields || {};
 
         try {
+            const isLaserAttack = SpecialEffectFactory._isLaserAttack(attacker);
             // if attacker/target lack positions, do nothing
             if (!attacker.position || !target.position ||
                 !Number.isFinite(attacker.position.col) ||
@@ -1935,6 +2167,9 @@ export default class SpecialEffectFactory {
                     
                     // For BlockAllLanes, the shield blocks ALL attacks passing through this column
                     // regardless of which row they come from or go to
+                    if (hasBlockAllLanes && isLaserAttack) {
+                        continue;
+                    }
                     if (!hasBlockAllLanes) {
                         const atkRow = attacker.position?.row;
                         const ffRow = ff.position?.row;
@@ -1984,7 +2219,7 @@ export default class SpecialEffectFactory {
 
                             try {
                                 if (scene.sound) {
-                                    scene.sound.play('shield_break', { volume: 0.6 });
+                                    GlobalAudio.playSfx(scene, 'shield_break', 0.6);
                                 }
                             } catch (e) {}
                         }
@@ -2004,7 +2239,7 @@ export default class SpecialEffectFactory {
                             // Play shield break sound effect
                             try {
                                 if (scene.sound) {
-                                    scene.sound.play('shield_burst', { volume: 0.6 });
+                                    GlobalAudio.playSfx(scene, 'shield_burst', 0.6);
                                 }
                             } catch (e) {}
 
@@ -2134,6 +2369,7 @@ export default class SpecialEffectFactory {
     static interceptWithForceField(attacker, enemies, scene) {
         if (!attacker || !attacker.position || !scene) return null;
         const grid = scene.grid || [];
+        if (SpecialEffectFactory._isLaserAttack(attacker)) return null;
         if (scene.forceFields && Object.keys(scene.forceFields).length) {
             const enemyCols = enemies.filter(e => e && e.position).map(e => e.position.col);
             if (enemyCols.length) {
@@ -2147,8 +2383,8 @@ export default class SpecialEffectFactory {
                         if (ff && ff.currentHealth > 0 && SpecialEffectFactory._isEnemyUnit(attacker, ff)) {
                             const hasBlockAllLanes = ff.specialEffects?.some(e => e.Type === 'BlockAllLanes');
                             if (hasBlockAllLanes) {
-                                const hasShield = ff._blockShield > 0 || ff.ShieldValue > 0;
-                                if (hasShield || c === nearestEnemyCol) {
+                                const hasShield = (Number.isFinite(ff._blockShield) ? ff._blockShield : Number(ff.ShieldValue || 0)) > 0;
+                                if (hasShield) {
                                     return ff;
                                 }
                             }
@@ -2306,11 +2542,18 @@ export default class SpecialEffectFactory {
         }
 
         // Sort by targeting mode (default to 'First' - closest)
+        // When CanTargetAdjacentLanes, always prioritize: Centre > Bottom > Top
         const targetingMode = effect.TargetingMode || 'First';
+        const healerRow = healer.position.row;
         let target;
         switch (targetingMode) {
             case 'First':
                 target = alliesInRange.sort((a, b) => {
+                    // Prioritize centre row, then bottom, then top
+                    const rowPriorityA = a.position.row === healerRow ? 0 : (a.position.row > healerRow ? 1 : 2);
+                    const rowPriorityB = b.position.row === healerRow ? 0 : (b.position.row > healerRow ? 1 : 2);
+                    if (rowPriorityA !== rowPriorityB) return rowPriorityA - rowPriorityB;
+                    // Within same row, sort by distance
                     const distA = Math.abs(a.position.col - healer.position.col);
                     const distB = Math.abs(b.position.col - healer.position.col);
                     return distA - distB;
@@ -2318,16 +2561,35 @@ export default class SpecialEffectFactory {
                 break;
             case 'Last':
                 target = alliesInRange.sort((a, b) => {
+                    // Prioritize centre row, then bottom, then top
+                    const rowPriorityA = a.position.row === healerRow ? 0 : (a.position.row > healerRow ? 1 : 2);
+                    const rowPriorityB = b.position.row === healerRow ? 0 : (b.position.row > healerRow ? 1 : 2);
+                    if (rowPriorityA !== rowPriorityB) return rowPriorityA - rowPriorityB;
+                    // Within same row, sort by distance (farthest first)
                     const distA = Math.abs(a.position.col - healer.position.col);
                     const distB = Math.abs(b.position.col - healer.position.col);
                     return distB - distA;
                 })[0];
                 break;
             case 'Weak':
-                target = alliesInRange.sort((a, b) => (a.currentHealth / a.health) - (b.currentHealth / b.health))[0];
+                target = alliesInRange.sort((a, b) => {
+                    // Prioritize centre row, then bottom, then top
+                    const rowPriorityA = a.position.row === healerRow ? 0 : (a.position.row > healerRow ? 1 : 2);
+                    const rowPriorityB = b.position.row === healerRow ? 0 : (b.position.row > healerRow ? 1 : 2);
+                    if (rowPriorityA !== rowPriorityB) return rowPriorityA - rowPriorityB;
+                    // Within same row priority, sort by health percentage (weakest first)
+                    return (a.currentHealth / a.health) - (b.currentHealth / b.health);
+                })[0];
                 break;
             case 'Strong':
-                target = alliesInRange.sort((a, b) => (b.currentHealth / b.health) - (a.currentHealth / a.health))[0];
+                target = alliesInRange.sort((a, b) => {
+                    // Prioritize centre row, then bottom, then top
+                    const rowPriorityA = a.position.row === healerRow ? 0 : (a.position.row > healerRow ? 1 : 2);
+                    const rowPriorityB = b.position.row === healerRow ? 0 : (b.position.row > healerRow ? 1 : 2);
+                    if (rowPriorityA !== rowPriorityB) return rowPriorityA - rowPriorityB;
+                    // Within same row priority, sort by health percentage (strongest first)
+                    return (b.currentHealth / b.health) - (a.currentHealth / a.health);
+                })[0];
                 break;
             default:
                 target = alliesInRange[0];
@@ -2419,7 +2681,7 @@ export default class SpecialEffectFactory {
                     }
                     if (scene && scene.sound && effect.Audio) {
                         try {
-                            scene.sound.play(effect.Audio, { volume: 0.6 });
+                            GlobalAudio.playSfx(scene, effect.Audio, 0.6);
                         } catch (e) {
                             if (DEBUG_MODE) console.warn('[Summon] sound effect failed', e);
                         }
@@ -2457,7 +2719,7 @@ export default class SpecialEffectFactory {
                     }
                     try {
                         if (scene.sound) {
-                            scene.sound.play('shield_deploy', { volume: 0.6 });
+                            GlobalAudio.playSfx(scene, 'shield_deploy', 0.6);
                         }
                     } catch (e) {}
                     break;

@@ -8,6 +8,7 @@
     "Ammo": 2,
     "ReloadDelay": 1,
     "TargetingMode": "First",
+    "ProjectileMotion": "Straight",
     "ProjectileSprite": "shock_bullet",
     "DisplaySprite": "shockblaster",
     "SpecialEffects": [

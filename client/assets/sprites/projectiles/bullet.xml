@@ -1,0 +1,8 @@
+﻿<?xml version="1.0" ?>
+<SpriteInformation>
+    <FrameInformation name="bullet" texh="54" texw="108" type="png">
+        <Animation name="bullet">
+            <Cell ah="54" aw="108" ax="0" ay="0" h="54" name="bullet" w="108" x="0" y="0"/>
+        </Animation>
+    </FrameInformation>
+</SpriteInformation>

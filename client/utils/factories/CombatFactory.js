@@ -5,12 +5,195 @@ import DefenceFactory from './DefenceFactory.js';
 import MonsterFactory from './MonsterFactory.js';
 import StatusEffectFactory from './StatusEffectFactory.js';
 import SpecialEffectFactory from './SpecialEffectFactory.js';
+import GlobalAudio from '../AudioManager.js';
+import SpriteFactory from './SpriteFactory.js';
 
 /**
  * Centralized combat logic used by scenes to resolve attacks, movement, and spawns.
  * All methods are static and expect the active scene to be passed in.
  */
 export default class CombatFactory {
+    static _getUnitWorldXY(unit, scene) {
+        if (!unit || !scene) return null;
+        const spr = unit.sprite;
+        if (spr) {
+            if (spr.parentContainer) {
+                return {
+                    x: (spr.parentContainer.x || 0) + (spr.x || 0),
+                    y: (spr.parentContainer.y || 0) + (spr.y || 0)
+                };
+            }
+            if (typeof spr.x === 'number' && typeof spr.y === 'number') {
+                return { x: spr.x, y: spr.y };
+            }
+        }
+        if (unit.position && typeof scene.getTileXY === 'function') {
+            const t = scene.getTileXY(unit.position.row, unit.position.col);
+            return { x: t.x, y: t.y + (scene.UNIT_Y_OFFSET || 0) };
+        }
+        return null;
+    }
+
+    static _normalizeProjectileMotion(attacker) {
+        const raw = attacker?.projectileMotion || attacker?.ProjectileMotion || 'Straight';
+        const val = String(raw || '').trim().toLowerCase();
+        switch (val) {
+            case 'none':
+                return 'none';
+            case 'lobbed':
+                return 'lobbed';
+            case 'curved':
+                return 'curved';
+            case 'laser':
+                return 'laser';
+            case 'straight':
+            default:
+                return 'straight';
+        }
+    }
+
+    static _getProjectileKey(attacker) {
+        const key = attacker?.projectileSprite || attacker?.ProjectileSprite || null;
+        if (!key) return null;
+        const lowered = String(key).trim().toLowerCase();
+        if (lowered === 'null' || lowered === 'none' || lowered === 'undefined') return null;
+        return key;
+    }
+
+    static _getLaserEnd(scene, attacker, start, target) {
+        if (!scene || !start) return target;
+        const cols = scene.GRID_COLS ?? scene.grid?.[0]?.length ?? 9;
+        const rows = scene.GRID_ROWS ?? scene.grid?.length ?? 5;
+        const attackerIsDef = attacker?.typeName in (DefenceFactory.defenceData || {});
+        let dir = attackerIsDef ? 1 : -1;
+        if (target && typeof target.x === 'number') {
+            dir = (target.x >= start.x) ? 1 : -1;
+        }
+        const row = Math.max(0, Math.min(rows - 1, attacker?.position?.row ?? 0));
+        const endCol = dir > 0 ? (cols - 1) : 0;
+        if (typeof scene.getTileXY === 'function') {
+            const t = scene.getTileXY(row, endCol);
+            return { x: t.x, y: t.y + (scene.UNIT_Y_OFFSET || 0) };
+        }
+        return target;
+    }
+
+    static async _spawnProjectile(attacker, target, scene = null) {
+        const useScene = scene || attacker?.sprite?.scene || target?.sprite?.scene || null;
+        if (!useScene || !useScene.add || !useScene.tweens) return;
+
+        const projectileKey = CombatFactory._getProjectileKey(attacker);
+        if (!projectileKey) return;
+
+        const motion = CombatFactory._normalizeProjectileMotion(attacker);
+        if (motion === 'none') return;
+
+        const start = CombatFactory._getUnitWorldXY(attacker, useScene);
+        let endTarget = CombatFactory._getUnitWorldXY(target, useScene);
+        if (!start || !endTarget) return;
+
+        let end = endTarget;
+        if (motion === 'laser') {
+            end = CombatFactory._getLaserEnd(useScene, attacker, start, endTarget);
+        } else {
+            try {
+                const intercept = SpecialEffectFactory.getBlockAllLanesIntercept(attacker, target, useScene);
+                if (intercept && typeof useScene.getTileXY === 'function') {
+                    const t = useScene.getTileXY(intercept.row, intercept.col);
+                    end = { x: t.x, y: t.y + (useScene.UNIT_Y_OFFSET || 0) };
+                }
+            } catch (e) {}
+        }
+
+        const dx = (end.x - start.x);
+        const dy = (end.y - start.y);
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        const duration = Math.max(120, Math.min(900, Math.round(120 + dist * 0.6)));
+
+        let proj = null;
+        try {
+            proj = await SpriteFactory.createSprite(useScene, 'projectile', projectileKey, start.x, start.y, { depth: 1000 });
+        } catch (e) {
+            proj = null;
+        }
+
+        if (!proj) {
+            try {
+                if (useScene.textures?.exists?.(projectileKey)) {
+                    proj = useScene.add.sprite(start.x, start.y, projectileKey);
+                } else if (useScene.textures?.exists?.('no-sprite')) {
+                    proj = useScene.add.sprite(start.x, start.y, 'no-sprite');
+                }
+            } catch (e) {
+                proj = null;
+            }
+        }
+        if (!proj) return;
+
+        try {
+            if (proj.setDepth) proj.setDepth(1000);
+        } catch (e) {}
+
+        const destroy = () => {
+            try { proj.destroy(); } catch (e) {}
+        };
+
+        const angle = Math.atan2(dy, dx);
+        try {
+            if (typeof proj.rotation === 'number') proj.rotation = angle;
+        } catch (e) {}
+
+        if (motion === 'straight' || motion === 'laser') {
+            useScene.tweens.add({
+                targets: proj,
+                x: end.x,
+                y: end.y,
+                duration: motion === 'laser' ? Math.max(80, Math.min(300, duration * 0.6)) : duration,
+                ease: 'Linear',
+                onComplete: destroy
+            });
+            return;
+        }
+
+        if (motion === 'lobbed') {
+            const arcHeight = Math.max(30, Math.min(140, dist * 0.25));
+            useScene.tweens.addCounter({
+                from: 0,
+                to: 1,
+                duration,
+                ease: 'Cubic.easeInOut',
+                onUpdate: (tween) => {
+                    const t = tween.getValue();
+                    const x = start.x + dx * t;
+                    const y = start.y + dy * t - (Math.sin(Math.PI * t) * arcHeight);
+                    proj.x = x;
+                    proj.y = y;
+                },
+                onComplete: destroy
+            });
+            return;
+        }
+
+        if (motion === 'curved') {
+            const norm = Math.hypot(dx, dy) || 1;
+            const nx = -dy / norm;
+            const ny = dx / norm;
+            const curve = Math.max(20, Math.min(120, dist * 0.2));
+            useScene.tweens.addCounter({
+                from: 0,
+                to: 1,
+                duration,
+                ease: 'Sine.easeInOut',
+                onUpdate: (tween) => {
+                    const t = tween.getValue();
+                    const offset = Math.sin(Math.PI * t) * curve;
+                    proj.x = start.x + dx * t + nx * offset;
+                    proj.y = start.y + dy * t + ny * offset;
+                },
+                onComplete: destroy
+            });
+        }
+    }
     /**
      * Get the wave index to use for a unit's scaling-based effects.
      * Prefers the wave when the unit was placed, then scaled/spawned wave, then current scene wave.
@@ -118,7 +301,7 @@ export default class CombatFactory {
     }
 
     /**
-     * Show floating damage text if Visual Effects are enabled.
+     * Show floating damage text.
      * @param {Object} scene - Active scene
      * @param {Object} unit - Target unit to anchor the text
      * @param {number} amount - Damage amount to display
@@ -166,6 +349,132 @@ export default class CombatFactory {
             });
         } catch (e) {
             if (DEBUG_MODE) console.warn('showDamage failed', e);
+        }
+    }
+
+    /**
+     * Show floating status damage text.
+     * @param {Object} scene - Active scene
+     * @param {Object} unit - Target unit to anchor the text
+     * @param {number} amount - Damage amount to display
+     * @param {string} type - Status effect type (e.g., 'fire', 'poison')
+     */
+    static _showStatusDamage(scene, unit, amount, type) {
+        if (!scene || !unit || (amount === undefined || amount === null)) return;
+        try {
+            const settings = GlobalSettings.get(scene) || {};
+            const dmg = Math.max(0, Math.round(amount));
+            if (dmg <= 0) return;
+
+            const kind = String(type || '').trim().toLowerCase();
+            if (typeof scene.addHistoryEntry === 'function') {
+                const unitName = unit.fullName || unit.typeName || 'Unit';
+                const label = kind || 'status';
+                scene.addHistoryEntry(`${unitName} takes ${dmg} ${label} damage!`);
+            }
+
+            if (!settings.visualEffects) return;
+
+            let x = unit.sprite?.x;
+            let y = unit.sprite?.y;
+            if (typeof x === 'undefined' || typeof y === 'undefined') {
+                if (unit.position && typeof scene.getTileXY === 'function') {
+                    const t = scene.getTileXY(unit.position.row, unit.position.col);
+                    x = t.x;
+                    y = t.y;
+                } else {
+                    return;
+                }
+            }
+
+            let color = '#ffdddd';
+            if (kind === 'fire') color = '#ff5555';
+            if (kind === 'poison') color = '#55ff88';
+
+            const txt = scene.add.text(x, y - 10, `-${dmg}`, {
+                fontSize: '18px',
+                color,
+                stroke: '#000000',
+                strokeThickness: 3
+            }).setOrigin(0.5);
+
+            scene.tweens.add({
+                targets: txt,
+                y: txt.y - 30,
+                alpha: 0,
+                duration: 900,
+                ease: 'Cubic.easeOut',
+                onComplete: () => txt.destroy()
+            });
+        } catch (e) {
+            if (DEBUG_MODE) console.warn('_showStatusDamage failed', e);
+        }
+    }
+
+    /**
+     * Show floating fire damage text.
+     * @param {*} scene - Active scene
+     * @param {*} unit - Target unit to anchor the text
+     * @param {*} amount - Damage amount to display
+     */
+    static _showFireDamage(scene, unit, amount) {
+        CombatFactory._showStatusDamage(scene, unit, amount, 'fire');
+    }
+
+    /**
+     * Show floating poison damage text. 
+     * @param {*} scene - Active scene
+     * @param {*} unit - Target unit to anchor the text
+     * @param {*} amount - Damage amount to display
+     */
+    static _showPoisonDamage(scene, unit, amount) {
+        CombatFactory._showStatusDamage(scene, unit, amount, 'poison');
+    }
+
+    /**
+     * Show floating healing text. 
+     * @param {*} scene - Active scene
+     * @param {*} unit - Target unit to anchor the text
+     * @param {*} amount - Healing amount to display
+     */
+    static _showHealing(scene, unit, amount) {
+        if (!scene || !unit || (amount === undefined || amount === null)) return;
+        try {
+            const settings = GlobalSettings.get(scene) || {};
+            const heal = Math.max(0, Math.round(amount));
+            if (heal <= 0) return;
+
+            if (!settings.visualEffects) return;
+
+            let x = unit.sprite?.x;
+            let y = unit.sprite?.y;
+            if (typeof x === 'undefined' || typeof y === 'undefined') {
+                if (unit.position && typeof scene.getTileXY === 'function') {
+                    const t = scene.getTileXY(unit.position.row, unit.position.col);
+                    x = t.x;
+                    y = t.y;
+                } else {
+                    return;
+                }
+            }
+
+            const txt = scene.add.text(x, y - 10, `+${heal}`, {
+                fontSize: '18px',
+                color: '#ffe27a',
+                stroke: '#000000',
+                strokeThickness: 3
+            }).setOrigin(0.5);
+
+            scene.tweens.add({
+                targets: txt,
+                y: txt.y - 30,
+                alpha: 0,
+                duration: 900,
+                ease: 'Cubic.easeOut',
+                onComplete: () => txt.destroy()
+            });
+        } catch (e) {
+            if (DEBUG_MODE) console.warn('_showHealing failed', e);
         }
     }
 
@@ -354,7 +663,7 @@ export default class CombatFactory {
                 try {
                     if (scene.sound) {
                         const deathSound = u.deathSound || u.DeathSound || 'unit_death';
-                        scene.sound.play(deathSound, { volume: 0.5 });
+                        GlobalAudio.playSfx(scene, deathSound, 0.5);
                     }
                 } catch (e) {
                     // Sound not available, continue silently
@@ -448,7 +757,7 @@ export default class CombatFactory {
                             console.log(`[tickReloads] ${u.typeName} RELOAD COMPLETE - ammo restored to ${u.currentAmmo}`);
                         }
                         try {
-                            if (scene.sound) scene.sound.play('reload_complete', { volume: 0.4 });
+                            GlobalAudio.playSfx(scene, 'reload_complete', 0.4);
                         } catch (e) {}
                     }
                 }
@@ -506,15 +815,16 @@ export default class CombatFactory {
      * Move a monster leftwards according to its speed and grid collisions.
      * @param {Object} monster - Monster unit to move
      * @param {Object} scene - Active scene
+     * @returns {number} Tiles moved this call
      */
     static moveMonster(monster, scene, { direction = -1, ignoreForceFields = false, stepsOverride = null, maxSteps = null } = {}) {
         try {
-            if (!monster || !scene) return;
+            if (!monster || !scene) return 0;
             if (StatusEffectFactory.isUnitStunned(monster)) {
                 if (DEBUG_MODE) console.log(`[moveMonster] BLOCKED: ${monster.typeName} is stunned`);
-                return;
+                return 0;
             }
-            if (!monster.position || !Number.isFinite(monster.speed) || !Array.isArray(scene.grid)) return;
+            if (!monster.position || !Number.isFinite(monster.speed) || !Array.isArray(scene.grid)) return 0;
             const isCharmed = StatusEffectFactory.isUnitCharmed(monster);
             const canJump = !!monster.canJump || !!monster.CanJump;
 
@@ -522,13 +832,14 @@ export default class CombatFactory {
                 row,
                 col
             } = monster.position;
+            const oldCol = col;
 
             let steps = Number.isFinite(stepsOverride) ? Math.max(0, Math.floor(stepsOverride)) : CombatFactory._getMonsterMoveSteps(monster, scene);
             if (Number.isFinite(maxSteps)) {
                 steps = Math.min(steps, Math.max(0, Math.floor(maxSteps)));
             }
 
-            if (steps <= 0) return;
+            if (steps <= 0) return 0;
 
             let newCol = col;
             for (let s = 0; s < steps; s++) {
@@ -585,7 +896,7 @@ export default class CombatFactory {
                         }
 
                         // If the explosion killed the monster, stop movement
-                        if (monster._beingRemoved || monster.currentHealth <= 0) return;
+                        if (monster._beingRemoved || monster.currentHealth <= 0) return 0;
                     } else {
                         const blockerIsMonster = blocker && (blocker.typeName in (MonsterFactory.monsterData || {}));
                         if (canJump && !isCharmed && blockerIsMonster && (s + 1) < steps) {
@@ -606,8 +917,8 @@ export default class CombatFactory {
                 newCol = nextCol;
             }
 
-            if (newCol === col) return;
-            if (newCol < 0 || newCol >= (scene.grid[0]?.length || scene.GRID_COLS || 9)) return;
+            if (newCol === col) return 0;
+            if (newCol < 0 || newCol >= (scene.grid[0]?.length || scene.GRID_COLS || 9)) return 0;
 
             // clear old cell references (do not destroy sprite)
             if (scene.grid[row] && scene.grid[row][col]) {
@@ -661,6 +972,14 @@ export default class CombatFactory {
                 }
             }
 
+            try {
+                if (SpecialEffectFactory._hasBlockAllLanes?.(monster)) {
+                    SpecialEffectFactory._syncBlockAllLanesColumn(monster, scene, newCol);
+                }
+            } catch (e) {
+                if (DEBUG_MODE) console.warn('[moveMonster] block all lanes sync failed', e);
+            }
+
             if (typeof scene.addHistoryEntry === 'function') {
                 const moved = Math.abs(newCol - col);
                 if (moved > 0) {
@@ -677,9 +996,11 @@ export default class CombatFactory {
             } catch (e) {
                 if (DEBUG_MODE) console.warn('[moveMonster] applyDamageBoostsToUnit failed', e);
             }
+            return Math.abs(newCol - col);
         } catch (e) {
             console.error('MonsterFactory.move error:', e);
         }
+        return 0;
     }
 
     /**
@@ -692,6 +1013,9 @@ export default class CombatFactory {
     static resolveAttack(attacker, target, scene = null) {
         if (!attacker || !target) return;
         if (target.currentHealth <= 0) return;
+
+        // Fire-and-forget projectile visuals (purely cosmetic)
+        CombatFactory._spawnProjectile(attacker, target, scene).catch(() => {});
 
         const base = (typeof attacker.damage === 'number') ? attacker.damage : 0;
         attacker._lastDamageDealtRaw = Math.max(0, Math.round(base));
@@ -907,7 +1231,7 @@ export default class CombatFactory {
         const centerCol = Math.floor((scene.GRID_COLS ?? 9) / 2);
         const defCols = [];
         for (let c = 0; c < centerCol; c++) defCols.push(c);
-        defCols.sort((a, b) => b - a);
+        defCols.sort((a, b) => a - b);
 
         const canDirectlyTarget = (attacker, target) => {
             if (!attacker || !target) return false;
@@ -944,6 +1268,12 @@ export default class CombatFactory {
                 if (!isCharmed && !hasBackTargeting && ((u.position.col - def.position.col) * dir) <= 0) return false;
                 return Math.abs(u.position.col - def.position.col) <= (def.range ?? 0);
             }).sort((a, b) => {
+                // When CanTargetAdjacentLanes, prioritize: Centre > Bottom > Top
+                const defRow = def.position.row;
+                const rowPriorityA = a.position.row === defRow ? 0 : (a.position.row > defRow ? 1 : 2);
+                const rowPriorityB = b.position.row === defRow ? 0 : (b.position.row > defRow ? 1 : 2);
+                if (rowPriorityA !== rowPriorityB) return rowPriorityA - rowPriorityB;
+                // Within same row priority, sort by distance
                 const distA = Math.abs(a.position.col - def.position.col);
                 const distB = Math.abs(b.position.col - def.position.col);
                 return distA - distB;
@@ -959,6 +1289,7 @@ export default class CombatFactory {
             const wantMonsters = isCharmed;
             const monsterRange = Number.isFinite(rangeOverride) ? rangeOverride : (mon.range ?? 1);
             const monCol = mon.position?.col ?? 0;
+            const monRow = mon.position?.row ?? 0;
 
             // First check for force fields in range (only when not charmed)
             const forceFieldEnemies = [];
@@ -994,12 +1325,24 @@ export default class CombatFactory {
 
             // Combine: force fields first (prioritized), then regular enemies
             const sortedForceFields = forceFieldEnemies.sort((a, b) => {
+                // When CanTargetAdjacentLanes, prioritize: Centre > Bottom > Top
+                const aRow = a.position?.row ?? 0;
+                const bRow = b.position?.row ?? 0;
+                const rowPriorityA = aRow === monRow ? 0 : (aRow > monRow ? 1 : 2);
+                const rowPriorityB = bRow === monRow ? 0 : (bRow > monRow ? 1 : 2);
+                if (rowPriorityA !== rowPriorityB) return rowPriorityA - rowPriorityB;
+                // Within same row priority, sort by distance
                 const distA = Math.abs((a.position?.col ?? 0) - monCol);
                 const distB = Math.abs((b.position?.col ?? 0) - monCol);
                 return distA - distB;
             });
 
             const sortedRegular = regularEnemies.sort((a, b) => {
+                // When CanTargetAdjacentLanes, prioritize: Centre > Bottom > Top
+                const rowPriorityA = a.position.row === monRow ? 0 : (a.position.row > monRow ? 1 : 2);
+                const rowPriorityB = b.position.row === monRow ? 0 : (b.position.row > monRow ? 1 : 2);
+                if (rowPriorityA !== rowPriorityB) return rowPriorityA - rowPriorityB;
+                // Within same row priority, sort by distance
                 const distA = Math.abs(a.position.col - monCol);
                 const distB = Math.abs(b.position.col - monCol);
                 return distA - distB;
@@ -1013,22 +1356,39 @@ export default class CombatFactory {
             if (!mon || !scene || !mon.position) return false;
             if (StatusEffectFactory.isUnitCharmed(mon)) return false;
             
-            // Only melee monsters (range <= 2) should advance into dead defence tiles
-            // Short melee (range=1): Orc, Golem
-            // Long melee (range=2): Bat, Demon
-            // Ranged monsters (range > 2) should stay in place and continue attacking
+            // Only melee monsters (range 1-2, no projectile motion) can advance.
             const monRange = Number.isFinite(mon.range) ? mon.range : 1;
-            if (monRange > 2) return false;
+            const rawMotion = (mon.projectileMotion !== undefined ? mon.projectileMotion : mon.ProjectileMotion);
+            const motion = String(rawMotion ?? '').trim().toLowerCase();
+            const rawProj = (mon.projectileSprite !== undefined ? mon.projectileSprite : mon.ProjectileSprite);
+            const projKey = String(rawProj ?? '').trim().toLowerCase();
+            const projNullLike = !projKey || projKey === 'null' || projKey === 'none' || projKey === 'undefined';
+            const isMelee = (motion === 'none' || (!motion && projNullLike)) && monRange <= 2;
+            if (!isMelee) return false;
+
+            // Short melee (range=1) can advance into dead defence tiles.
+            // Long melee (range>=2) may advance into an empty gap, but should not
+            // step into the dead target cell or become adjacent to a living defence.
             
             const row = mon.position.row;
             const col = mon.position.col;
             const nextCol = col - 1;
             if (nextCol < 0) return false;
             const cell = scene.grid?.[row]?.[nextCol];
-            
+
             if (!cell) return false;
             const target = cell.unit;
-            
+
+            if (monRange > 1) {
+                // Only advance into an empty gap
+                if (target) return false;
+                const nextNextCol = nextCol - 1;
+                if (nextNextCol >= 0) {
+                    const ahead = scene.grid?.[row]?.[nextNextCol]?.unit;
+                    if (ahead && ahead.currentHealth > 0) return false;
+                }
+            }
+
             // If no target in cell, the tile is empty - monster can occupy it
             if (!target) {
                 // Advance into empty cell
@@ -1063,21 +1423,31 @@ export default class CombatFactory {
                     };
                 }
 
-                if (mon.sprite) {
-                    mon.sprite.x = txy.x;
-                    mon.sprite.y = (txy.y ?? 0) + (scene.UNIT_Y_OFFSET ?? 0);
-                    if (typeof mon.sprite.setDepth === 'function') {
-                        mon.sprite.setDepth(mon.sprite.depth ?? 0);
-                    }
+            if (mon.sprite) {
+                mon.sprite.x = txy.x;
+                mon.sprite.y = (txy.y ?? 0) + (scene.UNIT_Y_OFFSET ?? 0);
+                if (typeof mon.sprite.setDepth === 'function') {
+                    mon.sprite.setDepth(mon.sprite.depth ?? 0);
                 }
-                try {
-                    if (typeof scene._positionUnitUI === 'function') scene._positionUnitUI(mon);
-                } catch (e) {}
-                return true;
+            }
+            try {
+                if (typeof scene._positionUnitUI === 'function') scene._positionUnitUI(mon);
+            } catch (e) {}
+            try {
+                if (SpecialEffectFactory._hasBlockAllLanes?.(mon)) {
+                    SpecialEffectFactory._syncBlockAllLanesColumn(mon, scene, nextCol);
+                }
+            } catch (e) {
+                if (DEBUG_MODE) console.warn('[tryAdvanceIntoKilledTarget] block all lanes sync failed', e);
+            }
+            return true;
             }
             
             // If target is alive, don't advance
             if (target.currentHealth > 0) return false;
+
+            // For long melee, do not advance into the dead target cell
+            if (monRange > 1) return false;
             
             // Target is dead - advance into the cell (only for melee monsters)
             // Clear any stale position references
@@ -1378,11 +1748,12 @@ export default class CombatFactory {
             u.position &&
             u.currentHealth > 0
         );
+        const approachRange = Math.max(1, (scene.GRID_COLS ?? scene.grid?.[0]?.length ?? 9));
 
         monstersToProcess.sort((a, b) => {
-            const ac = (a.position && typeof a.position.col === 'number') ? a.position.col : -Infinity;
-            const bc = (b.position && typeof b.position.col === 'number') ? b.position.col : -Infinity;
-            return bc - ac;
+            const ac = (a.position && typeof a.position.col === 'number') ? a.position.col : Infinity;
+            const bc = (b.position && typeof b.position.col === 'number') ? b.position.col : Infinity;
+            return ac - bc;
         });
 
         const tryMonsterAttack = async (mon, rowsToCheck) => {
@@ -1560,6 +1931,13 @@ export default class CombatFactory {
                         .filter(r => r >= 0 && r < (scene.GRID_ROWS ?? 5));
                 }
 
+                // Periodic summon attempt (independent of attacking)
+                try {
+                    SpecialEffectFactory.tryTriggerPeriodicSummon(mon, scene);
+                } catch (e) {
+                    if (DEBUG_MODE) console.warn('[resolveCombat] tryTriggerPeriodicSummon(mon) failed', e);
+                }
+
                 // Check for HealAllies first - prioritize healing allies over attacking enemies
                 const healEffect = mon.specialEffects?.find(e => e.Type === 'HealAllies');
                 if (healEffect && mon.currentHealth > 0) {
@@ -1573,76 +1951,197 @@ export default class CombatFactory {
                     }
                 }
 
+                const isCharmed = StatusEffectFactory.isUnitCharmed(mon);
+                const speedAbs = Number.isFinite(mon.speed) ? Math.abs(mon.speed) : 0;
+
                 const attackResult = await tryMonsterAttack(mon, rowsToCheck);
                 if (attackResult.removedByAmmo) continue;
                 if (attackResult.attacked) {
+                    // Attack succeeded - try advancing into killed target
                     tryAdvanceIntoKilledTarget(mon);
-                }
 
-                if (!attackResult.attacked) {
-                    const isCharmed = StatusEffectFactory.isUnitCharmed(mon);
-                    const speedAbs = Number.isFinite(mon.speed) ? Math.abs(mon.speed) : 0;
-                    let stepsOverride = null;
-                    let maxSteps = null;
-                    let shouldTryPostMoveAttack = false;
-
-                    // Skirmisher behavior: if we can reach attack range this wave, stop early and attack.
-                    if (speedAbs >= 2) {
+                    // Strafe after attack if the monster can move >= 2 tiles
+                    // Applies to all range levels (range 1 melee like Ghost, range 2 melee like Bat/Harpy, etc.)
+                    if (!mon._beingRemoved && mon.currentHealth > 0) {
                         const moveSteps = CombatFactory._getMonsterMoveSteps(mon, scene);
-                        stepsOverride = moveSteps;
-
-                        if (moveSteps > 0) {
+                        if (moveSteps >= 2) {
+                            const direction = isCharmed ? 1 : -1;
                             const range = Math.max(1, Number(mon.range || 0) || 1);
-                            const extended = buildDefenceEnemiesForMon(mon, rowsToCheck, range + moveSteps);
-                            if (extended.length > 0) {
-                                const targetCol = extended[0]?.position?.col;
-                                if (Number.isFinite(targetCol) && Number.isFinite(mon.position?.col)) {
-                                    const dist = Math.abs(targetCol - mon.position.col);
-                                    const needed = Math.max(0, dist - range);
-                                    if (needed > 0 && needed <= moveSteps) {
-                                        maxSteps = needed;
-                                        shouldTryPostMoveAttack = true;
+                            let allowedSteps = moveSteps;
+
+                            // Check if there are remaining enemies to strafe against
+                            const enemies = buildDefenceEnemiesForMon(mon, rowsToCheck);
+                            if (enemies.length === 0) {
+                                // Target was killed — don't strafe into empty space
+                                allowedSteps = 0;
+                            } else {
+                                // There are remaining enemies - constrain strafe based on range
+                                const targetCol = enemies[0].position?.col;
+                                const monCol = mon.position?.col ?? 0;
+                                if (Number.isFinite(targetCol)) {
+                                    if (range >= 2) {
+                                        // Long-melee (range >= 2): maintain distance >= range
+                                        allowedSteps = 0;
+                                        for (let s = moveSteps; s >= 1; s--) {
+                                            const newCol = monCol + (direction * s);
+                                            const newDist = Math.abs(targetCol - newCol);
+                                            if (newDist >= range) {
+                                                allowedSteps = s;
+                                                break;
+                                            }
+                                        }
+                                    } else {
+                                        // Range 1 melee: don't strafe into target position
+                                        allowedSteps = 0;
+                                        for (let s = moveSteps; s >= 1; s--) {
+                                            const newCol = monCol + (direction * s);
+                                            if (newCol !== targetCol) {
+                                                // Safe to strafe to this position
+                                                allowedSteps = s;
+                                                break;
+                                            }
+                                        }
                                     }
                                 }
+                            }
+
+                            if (allowedSteps > 0) {
+                                CombatFactory.moveMonster(mon, scene, {
+                                    direction,
+                                    ignoreForceFields: isCharmed,
+                                    stepsOverride: allowedSteps
+                                });
                             }
                         }
                     }
 
-                    CombatFactory.moveMonster(mon, scene, {
+                    continue;
+                }
+
+                // No attack happened - handle normal movement
+                // Check if already in range before moving
+                const range = Math.max(1, Number(mon.range || 0) || 1);
+                const enemiesInRange = buildDefenceEnemiesForMon(mon, rowsToCheck);
+                let alreadyInRange = false;
+                
+                if (enemiesInRange.length > 0) {
+                    const targetCol = enemiesInRange[0]?.position?.col;
+                    const monCol = mon.position?.col ?? 0;
+                    if (Number.isFinite(targetCol)) {
+                        const dist = Math.abs(targetCol - monCol);
+                        alreadyInRange = (dist <= range);
+                    }
+                }
+                
+                // If already in range, don't move - just try attacking again
+                // (first attack may have failed due to status effects like silence)
+                if (alreadyInRange) {
+                    if (!attackResult.silenced) {
+                        await tryMonsterAttack(mon, rowsToCheck);
+                    }
+                    continue;
+                }
+                
+                // Not in range yet - approach and try to engage
+                const moveSteps = CombatFactory._getMonsterMoveSteps(mon, scene);
+                let stepsToMove = moveSteps;
+                let shouldTryPostMoveAttack = false;
+                const approachEnemies = buildDefenceEnemiesForMon(mon, rowsToCheck, approachRange);
+
+                const canSkirmishPostMove = moveSteps >= 2;
+
+                // Calculate if we can reach range this turn
+                if (moveSteps > 0 && approachEnemies.length > 0) {
+                    const targetCol = approachEnemies[0]?.position?.col;
+                    const monCol = mon.position?.col ?? 0;
+                    if (Number.isFinite(targetCol)) {
+                        const dist = Math.abs(targetCol - monCol);
+                        let needed = Math.max(0, dist - range);
+                        
+                        // Only move if we can actually reach range this turn.
+                        // Post-move attack is reserved for skirmisher-capable units.
+                        if (needed > 0 && needed < moveSteps && canSkirmishPostMove) {
+                            stepsToMove = needed;
+                            shouldTryPostMoveAttack = true;
+                        }
+                    }
+                }
+
+                if (stepsToMove > 0) {
+                    const movedSteps = CombatFactory.moveMonster(mon, scene, {
                         direction: isCharmed ? 1 : -1,
                         ignoreForceFields: isCharmed,
-                        stepsOverride,
-                        maxSteps
+                        stepsOverride: stepsToMove
                     });
+                    const blockedBeforePlanned = canSkirmishPostMove && movedSteps > 0 && movedSteps < stepsToMove;
+                    const canAttemptPostMoveAttack = shouldTryPostMoveAttack || blockedBeforePlanned;
 
-                    if (shouldTryPostMoveAttack && !mon._beingRemoved && mon.currentHealth > 0) {
+                    if (canAttemptPostMoveAttack && !mon._beingRemoved && mon.currentHealth > 0) {
                         const postAttack = await tryMonsterAttack(mon, rowsToCheck);
                         if (postAttack.removedByAmmo) continue;
-                    }
-
-                    try {
-                        SpecialEffectFactory.tryTriggerPeriodicSummon(mon, scene);
-                    } catch (e) {
-                        if (DEBUG_MODE) console.warn('[resolveCombat] tryTriggerPeriodicSummon(mon) failed', e);
-                    }
-
-                    try {
-                        if (typeof scene._positionUnitUI === 'function' && scene.time && typeof scene.time.delayedCall === 'function') {
-                            scene.time.delayedCall(0, () => {
-                                try {
-                                    scene._positionUnitUI(mon);
-                                } catch (e) {
-                                    if (DEBUG_MODE) console.warn('[resolveCombat] post-move _positionUnitUI failed', e);
+                        
+                        // After post-move attack, apply strafe logic if unit can move 2+ tiles AND attack succeeded
+                        if (postAttack.attacked && moveSteps >= 2 && !mon._beingRemoved && mon.currentHealth > 0) {
+                            const strafeMoves = moveSteps - stepsToMove;
+                            if (strafeMoves > 0) {
+                                const direction = isCharmed ? 1 : -1;
+                                let allowedSteps = strafeMoves;
+                                
+                                // Check for remaining enemies to strafe against
+                                const enemiesPost = buildDefenceEnemiesForMon(mon, rowsToCheck);
+                                if (enemiesPost.length === 0) {
+                                    // Target was killed, don't strafe into empty space
+                                    allowedSteps = 0;
+                                } else {
+                                    // There are remaining enemies - constrain strafe based on range
+                                    const targetCol = enemiesPost[0].position?.col;
+                                    const monCol = mon.position?.col ?? 0;
+                                    if (Number.isFinite(targetCol)) {
+                                        if (range >= 2) {
+                                            // Long-melee (range >= 2): constrain strafing to maintain distance >= range
+                                            allowedSteps = 0;
+                                            for (let s = strafeMoves; s >= 1; s--) {
+                                                const newCol = monCol + (direction * s);
+                                                const newDist = Math.abs(targetCol - newCol);
+                                                if (newDist >= range) {
+                                                    allowedSteps = s;
+                                                    break;
+                                                }
+                                            }
+                                        } else {
+                                            // Range 1 melee: don't strafe into target position
+                                            allowedSteps = 0;
+                                            for (let s = strafeMoves; s >= 1; s--) {
+                                                const newCol = monCol + (direction * s);
+                                                if (newCol !== targetCol) {
+                                                    // Safe to strafe to this position
+                                                    allowedSteps = s;
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
-                            });
-                        } else {
-                            try {
-                                if (typeof scene._positionUnitUI === 'function') scene._positionUnitUI(mon);
-                            } catch (e) {}
+                                
+                                if (allowedSteps > 0) {
+                                    CombatFactory.moveMonster(mon, scene, {
+                                        direction,
+                                        ignoreForceFields: isCharmed,
+                                        stepsOverride: allowedSteps
+                                    });
+                                }
+                            }
                         }
-                    } catch (e) {
-                        if (DEBUG_MODE) console.warn('[resolveCombat] scheduling _positionUnitUI failed', e);
                     }
+                }
+
+
+                if (typeof scene._positionUnitUI === 'function' && scene.time && typeof scene.time.delayedCall === 'function') {
+                    scene.time.delayedCall(0, () => {
+                        try {
+                            scene._positionUnitUI(mon);
+                        } catch (e) {}
+                    });
                 }
             } catch (e) {
                 if (DEBUG_MODE) console.warn('[resolveCombat][monster] per-monster error', e);

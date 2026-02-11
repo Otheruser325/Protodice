@@ -9,7 +9,8 @@
 	"Ammo": 2,
 	"ReloadDelay": 1,
     "TargetingMode": "First",
-    "ProjectileSprite": "energy_bullet",
+	"ProjectileMotion": "Straight",
+    "ProjectileSprite": "energy_blast",
 	"DisplaySprite": "mech",
 	"SpecialEffects": [
 	  {

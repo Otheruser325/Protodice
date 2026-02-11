@@ -7,7 +7,8 @@ const DEFAULTS = {
     wavesPlayed: 0,
     wins: 0,
     monstersDefeated: 0,
-    defencesDestroyed: 0
+    defencesDestroyed: 0,
+    dailyChallengesCompleted: 0
   },
   unlocked: {
     firstPlay: false,
@@ -18,11 +19,18 @@ const DEFAULTS = {
     time12h: false,
     wins1: false,
     wins10: false,
-    defeatEnemies: false,
+    wins50: false,
+    kills50: false,
+    kills250: false,
+    kills1000: false,
     augmented: false,
     darkestHour: false,
+    challenger: false,
+    problemSolver: false,
     hellscape: false,
-    stunWave: false
+    stunWave: false,
+    tickler: false,
+    diceaholic: false
   },
   completedChallenges: {
     daily: false,
@@ -30,8 +38,13 @@ const DEFAULTS = {
   }
 };
 
-const ENEMY_DEFEAT_TARGET = 250;
+const ENEMY_DEFEAT_TARGET = 50;
+const ENEMY_DEFEAT_TARGET_250 = 250;
+const ENEMY_DEFEAT_TARGET_1000 = 1000;
+const DAILY_CHALLENGE_TARGET = 10;
 const STUN_WAVE_TARGET = 5;
+const FIRE_POISON_MATCH_TARGET = 100;
+const TIME_24H_SECONDS = 24 * 3600;
 
 class AchievementsManager {
   constructor() {
@@ -131,6 +144,7 @@ class AchievementsManager {
     this._data.totals.wins = (this._data.totals.wins || 0) + n;
     if (this._data.totals.wins >= 1) this.maybeUnlock('wins1');
     if (this._data.totals.wins >= 10) this.maybeUnlock('wins10');
+    if (this._data.totals.wins >= 50) this.maybeUnlock('wins50');
     this._save();
   }
 
@@ -151,6 +165,11 @@ class AchievementsManager {
   }
 
   recordShopPurchase(rarity) {
+    if (!rarity) return;
+    this.recordUnitUnlock(rarity);
+  }
+
+  recordUnitUnlock(rarity) {
     if (!rarity) return;
     const r = String(rarity).toLowerCase();
     if (r === 'epic') this.maybeUnlock('augmented');
@@ -184,8 +203,12 @@ class AchievementsManager {
     }
     if (!this._data.completedChallenges[key]) {
       this._data.completedChallenges[key] = true;
-      this._save();
     }
+    if (key === 'daily') {
+      this._data.totals.dailyChallengesCompleted = (this._data.totals.dailyChallengesCompleted || 0) + 1;
+      this._checkDailyMilestones();
+    }
+    this._save();
   }
 
   // Check if challenge completed
@@ -206,7 +229,13 @@ class AchievementsManager {
     const defences = this._data.totals.defencesDestroyed || 0;
     const total = monsters + defences;
     if (total >= ENEMY_DEFEAT_TARGET) {
-      this.maybeUnlock('defeatEnemies');
+      this.maybeUnlock('kills50');
+    }
+    if (total >= ENEMY_DEFEAT_TARGET_250) {
+      this.maybeUnlock('kills250');
+    }
+    if (total >= ENEMY_DEFEAT_TARGET_1000) {
+      this.maybeUnlock('kills1000');
     }
   }
 
@@ -214,6 +243,13 @@ class AchievementsManager {
     const t = this._data.totals.playTimeSeconds || 0;
     if (t >= 3600) this.maybeUnlock('time1h');
     if (t >= 12 * 3600) this.maybeUnlock('time12h');
+    if (t >= TIME_24H_SECONDS) this.maybeUnlock('time24h');
+  }
+
+  _checkDailyMilestones() {
+    const d = this._data.totals.dailyChallengesCompleted || 0;
+    if (d >= 1) this.maybeUnlock('daily1');
+    if (d >= DAILY_CHALLENGE_TARGET) this.maybeUnlock('daily10');
   }
 
   // mark unlocked and enqueue notification
@@ -275,12 +311,19 @@ class AchievementsManager {
       waves2500: { title: 'Endless War', desc: 'Progress 2,500 waves total.' },
       time1h: { title: 'Just One More', desc: 'Play Protodice for 1 hour total.' },
       time12h: { title: 'All In', desc: 'Play Protodice for 12 hours total.' },
+      time24h: { title: 'Diceaholic', desc: 'Play Protodice for 24 hours total.' },
       wins1: { title: 'First Victory', desc: 'Win your first match.' },
       wins10: { title: 'Veteran Commander', desc: 'Win 10 matches.' },
-      defeatEnemies: { title: 'Enemy Down', desc: `Defeat ${ENEMY_DEFEAT_TARGET} enemies (monsters as defender / defences as attacker).` },
-      augmented: { title: 'Augmented', desc: 'Buy an Epic unit in the shop.' },
-      darkestHour: { title: 'In Our Darkest Hour...', desc: 'Buy a Legendary unit in the shop.' },
+      wins50: { title: 'Specialised Commander', desc: 'Win 50 matches.' },
+      kills50: { title: 'Enemy Down', desc: `Defeat ${ENEMY_DEFEAT_TARGET} enemies (monsters as defender / defences as attacker).` },
+      kills250: { title: 'No More Messing Around', desc: `Defeat ${ENEMY_DEFEAT_TARGET_250} enemies.` },
+      kills1000: { title: 'Monster Slayer', desc: `Defeat ${ENEMY_DEFEAT_TARGET_1000} enemies.` },
+      daily1: { title: 'Challenger', desc: 'Beat a daily challenge.' },
+      daily10: { title: 'Problem Solver', desc: `Beat ${DAILY_CHALLENGE_TARGET} daily challenges.` },
+      ownEpic: { title: 'Augmented', desc: 'Obtain an Epic unit.' },
+      ownLegendary: { title: 'In Our Darkest Hour...', desc: 'Obtain a Legendary unit.' },
       hellscape: { title: 'Hellscape', desc: "Defeat Deucifer in Deucifer's Pit." },
+      tickler: { title: 'The Tickler', desc: `Deal over ${FIRE_POISON_MATCH_TARGET} fire/poison damage in a match.` },
       stunWave: { title: "Who's Stunning Now?", desc: `Stun or freeze ${STUN_WAVE_TARGET} enemies in one wave.` }
     };
 

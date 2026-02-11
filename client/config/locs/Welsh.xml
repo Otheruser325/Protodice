@@ -166,7 +166,7 @@ Neu orlefwch y lonydd i dorri'r amddiffynfeydd.</T>
       <T id="ACH_TITLE" l="0">CYFLAWNIADAU</T>
       <T id="ACH_FIRSTPLAY_TITLE" l="0">Rwy&#39;n newydd i hyn</T>
       <T id="ACH_FIRSTPLAY_DESC" l="0">Chwarae Protodice am y tro cyntaf.</T>
-      <T id="ACH_WAVES_100_TITLE" l="0">Warm-Up Tonau</T>
+      <T id="ACH_WAVES_100_TITLE" l="0">Tonnau cynhesu</T>
       <T id="ACH_WAVES_100_DESC" l="0">Cyrraedd 100 ton i gyd.</T>
       <T id="ACH_WAVES_500_TITLE" l="0">Wedi&#39;i brofi mewn brwydr</T>
       <T id="ACH_WAVES_500_DESC" l="0">Cyrraedd 500 ton i gyd.</T>
@@ -176,20 +176,34 @@ Neu orlefwch y lonydd i dorri'r amddiffynfeydd.</T>
       <T id="ACH_TIME_1H_DESC" l="0">Chwarae Protodice am 1 awr i gyd.</T>
       <T id="ACH_TIME_12H_TITLE" l="0">Popeth i mewn</T>
       <T id="ACH_TIME_12H_DESC" l="0">Chwarae Protodice am 12 awr i gyd.</T>
-      <T id="ACH_WINS_1_TITLE" l="0">First Buddugoliaeth</T>
+      <T id="ACH_TIME_24H_TITLE" l="0">Gaeth i ddis</T>
+      <T id="ACH_TIME_24H_DESC" l="0">Chwarae Protodice am 24 awr i gyd.</T>
+      <T id="ACH_WINS_1_TITLE" l="0">Buddugoliaeth gyntaf</T>
       <T id="ACH_WINS_1_DESC" l="0">Ennill eich g&#234;m cyntaf.</T>
       <T id="ACH_WINS_10_TITLE" l="0">Cadlywydd profiadol</T>
       <T id="ACH_WINS_10_DESC" l="0">Ennill 10 g&#234;m.</T>
-      <T id="ACH_DEFEAT_ENEMIES_TITLE" l="0">Gelyn i lawr</T>
-      <T id="ACH_DEFEAT_ENEMIES_DESC" l="0">Trechu 250 enemies (monsters as defender / defences as attacker).</T>
-      <T id="ACH_AUGMENTED_TITLE" l="0">Wedi&#39;i uwchraddio</T>
-      <T id="ACH_AUGMENTED_DESC" l="0">Prynu an Epic unit in the shop.</T>
-      <T id="ACH_DARKEST_HOUR_TITLE" l="0">Yn ein hawr dywyllaf...</T>
-      <T id="ACH_DARKEST_HOUR_DESC" l="0">Prynu a Legendary unit in the shop.</T>
+      <T id="ACH_WINS_50_TITLE" l="0">Cadlywydd arbenigol</T>
+      <T id="ACH_WINS_50_DESC" l="0">Ennill 50 g&#234;m.</T>
+      <T id="ACH_KILLS_50_TITLE" l="0">Gelyn i lawr</T>
+      <T id="ACH_KILLS_50_DESC" l="0">Trechu 50 gelynion (bwystfilod fel amddiffynnydd / amddiffynfeydd fel ymosodwr).</T>
+      <T id="ACH_KILLS_250_TITLE" l="0">Dim mwy o chwarae</T>
+      <T id="ACH_KILLS_250_DESC" l="0">Trechu 250 gelynion.</T>
+      <T id="ACH_KILLS_1000_TITLE" l="0">Llofrudd bwystfilod</T>
+      <T id="ACH_KILLS_1000_DESC" l="0">Trechu 1,000 gelynion.</T>
+      <T id="ACH_DAILY_1_TITLE" l="0">Herwr</T>
+      <T id="ACH_DAILY_1_DESC" l="0">Curo her ddyddiol.</T>
+      <T id="ACH_DAILY_10_TITLE" l="0">Datryswr problemau</T>
+      <T id="ACH_DAILY_10_DESC" l="0">Curo 10 heriau dyddiol.</T>
+      <T id="ACH_OWN_EPIC_TITLE" l="0">Wedi&#39;i uwchraddio</T>
+      <T id="ACH_OWN_EPIC_DESC" l="0">Cael uned epig.</T>
+      <T id="ACH_OWN_LEGENDARY_TITLE" l="0">Yn ein hawr dywyllaf...</T>
+      <T id="ACH_OWN_LEGENDARY_DESC" l="0">Cael uned chwedlonol.</T>
       <T id="ACH_HELLSCAPE_TITLE" l="0">Uffern</T>
-      <T id="ACH_HELLSCAPE_DESC" l="0">Trechu Deucifer in Deucifer's Pit.</T>
-      <T id="ACH_STUN_WAVE_TITLE" l="0">Pwy sy'n syfrdanedig nawr?</T>
-      <T id="ACH_STUN_WAVE_DESC" l="0">Styn or freeze 5 enemies in one wave.</T>
+      <T id="ACH_HELLSCAPE_DESC" l="0">Trechu Deucifer yn Ffos Deucifer.</T>
+      <T id="ACH_TICKLER_TITLE" l="0">Y Cosquillwr</T>
+      <T id="ACH_TICKLER_DESC" l="0">Delio dros 100 o ddifrod t&#226;n/gwenwyn mewn g&#234;m.</T>
+      <T id="ACH_STUN_WAVE_TITLE" l="0">Pwy sy&#39;n syfrdanedig nawr?</T>
+      <T id="ACH_STUN_WAVE_DESC" l="0">Syfrdanu neu rewi 5 gelyn mewn un don.</T>
       <T id="ACH_BADGE_COMPLETE" l="0">WEDI&#39;I GWLBLHAU</T>
       <T id="ACH_BADGE_LOCKED" l="0">WEDI&#39;I GLOI</T>
       <T id="ACH_STATS_UNLOCKED" l="0">WEDI&#39;U DADGLOI: {0} / {1}</T>
@@ -224,6 +238,7 @@ Neu orlefwch y lonydd i dorri'r amddiffynfeydd.</T>
       <T id="CHALLENGE_WAVES" l="0">Tonau: {0}</T>
       <T id="CHALLENGE_TEAMS_ENABLED" l="0">Timau: wedi&#39;u galluogi</T>
       <T id="CHALLENGE_PLAYERS_LABEL" l="0">Chwaraewyr:</T>
+      <T id="CHALLENGE_LOADOUTS" l="0">Llwythi</T>
       <T id="CHALLENGE_AI_LABEL" l="0">AI {0}</T>
       <T id="CHALLENGE_HUMAN_LABEL" l="0">Dynol</T>
       <T id="CHALLENGE_START" l="0">DECHRAU HER</T>

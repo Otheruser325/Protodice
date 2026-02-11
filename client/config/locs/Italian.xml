@@ -166,30 +166,44 @@ Oppure travolgi i corridoi per superare le difese.</T>
       <T id="ACH_TITLE" l="0">OBIETTIVI</T>
       <T id="ACH_FIRSTPLAY_TITLE" l="0">Sono nuovo qui</T>
       <T id="ACH_FIRSTPLAY_DESC" l="0">Gioca a Protodice per la prima volta.</T>
-      <T id="ACH_WAVES_100_TITLE" l="0">Warm-Up Ondate</T>
-      <T id="ACH_WAVES_100_DESC" l="0">Progredisci per 100 ondate in totale.</T>
+      <T id="ACH_WAVES_100_TITLE" l="0">Ondate di riscaldamento</T>
+      <T id="ACH_WAVES_100_DESC" l="0">Progredisci di 100 ondate in totale.</T>
       <T id="ACH_WAVES_500_TITLE" l="0">Temprato dalla battaglia</T>
-      <T id="ACH_WAVES_500_DESC" l="0">Progredisci per 500 ondate in totale.</T>
+      <T id="ACH_WAVES_500_DESC" l="0">Progredisci di 500 ondate in totale.</T>
       <T id="ACH_WAVES_2500_TITLE" l="0">Guerra senza fine</T>
-      <T id="ACH_WAVES_2500_DESC" l="0">Progredisci per 2.500 ondate in totale.</T>
+      <T id="ACH_WAVES_2500_DESC" l="0">Progredisci di 2.500 ondate in totale.</T>
       <T id="ACH_TIME_1H_TITLE" l="0">Solo un&#39;altra</T>
       <T id="ACH_TIME_1H_DESC" l="0">Gioca a Protodice per 1 ora in totale.</T>
       <T id="ACH_TIME_12H_TITLE" l="0">Tutto dentro</T>
       <T id="ACH_TIME_12H_DESC" l="0">Gioca a Protodice per 12 ore in totale.</T>
-      <T id="ACH_WINS_1_TITLE" l="0">First Vittoria</T>
+      <T id="ACH_TIME_24H_TITLE" l="0">Dado-dipendente</T>
+      <T id="ACH_TIME_24H_DESC" l="0">Gioca a Protodice per 24 ore in totale.</T>
+      <T id="ACH_WINS_1_TITLE" l="0">Prima vittoria</T>
       <T id="ACH_WINS_1_DESC" l="0">Vinci la tua prima partita.</T>
       <T id="ACH_WINS_10_TITLE" l="0">Comandante veterano</T>
       <T id="ACH_WINS_10_DESC" l="0">Vinci 10 partite.</T>
-      <T id="ACH_DEFEAT_ENEMIES_TITLE" l="0">Nemico abbattuto</T>
-      <T id="ACH_DEFEAT_ENEMIES_DESC" l="0">Sconfitta 250 enemies (monsters as defender / defences as attacker).</T>
-      <T id="ACH_AUGMENTED_TITLE" l="0">Potenziato</T>
-      <T id="ACH_AUGMENTED_DESC" l="0">Compra an Epic unit in the shop.</T>
-      <T id="ACH_DARKEST_HOUR_TITLE" l="0">Nella nostra ora pi&#249; buia...</T>
-      <T id="ACH_DARKEST_HOUR_DESC" l="0">Compra a Legendary unit in the shop.</T>
+      <T id="ACH_WINS_50_TITLE" l="0">Comandante specializzato</T>
+      <T id="ACH_WINS_50_DESC" l="0">Vinci 50 partite.</T>
+      <T id="ACH_KILLS_50_TITLE" l="0">Nemico abbattuto</T>
+      <T id="ACH_KILLS_50_DESC" l="0">Sconfiggi 50 nemici (mostri da difensore / difese da attaccante).</T>
+      <T id="ACH_KILLS_250_TITLE" l="0">Niente pi&#249; scherzi</T>
+      <T id="ACH_KILLS_250_DESC" l="0">Sconfiggi 250 nemici.</T>
+      <T id="ACH_KILLS_1000_TITLE" l="0">Sterminatore di mostri</T>
+      <T id="ACH_KILLS_1000_DESC" l="0">Sconfiggi 1.000 nemici.</T>
+      <T id="ACH_DAILY_1_TITLE" l="0">Sfidante</T>
+      <T id="ACH_DAILY_1_DESC" l="0">Completa una sfida giornaliera.</T>
+      <T id="ACH_DAILY_10_TITLE" l="0">Risolutore di problemi</T>
+      <T id="ACH_DAILY_10_DESC" l="0">Completa 10 sfide giornaliere.</T>
+      <T id="ACH_OWN_EPIC_TITLE" l="0">Potenziato</T>
+      <T id="ACH_OWN_EPIC_DESC" l="0">Ottieni un&#39;unit&#224; epica.</T>
+      <T id="ACH_OWN_LEGENDARY_TITLE" l="0">Nella nostra ora pi&#249; buia...</T>
+      <T id="ACH_OWN_LEGENDARY_DESC" l="0">Ottieni un&#39;unit&#224; leggendaria.</T>
       <T id="ACH_HELLSCAPE_TITLE" l="0">Inferno</T>
-      <T id="ACH_HELLSCAPE_DESC" l="0">Sconfitta Deucifer in Deucifer's Pit.</T>
+      <T id="ACH_HELLSCAPE_DESC" l="0">Sconfiggi Deucifer nel Pozzo di Deucifer.</T>
+      <T id="ACH_TICKLER_TITLE" l="0">Il Solleticatore</T>
+      <T id="ACH_TICKLER_DESC" l="0">Infliggi oltre 100 danni da fuoco/veleno in una partita.</T>
       <T id="ACH_STUN_WAVE_TITLE" l="0">Chi &#232; stordito adesso?</T>
-      <T id="ACH_STUN_WAVE_DESC" l="0">Stordimento or freeze 5 enemies in one wave.</T>
+      <T id="ACH_STUN_WAVE_DESC" l="0">Stordisci o congela 5 nemici in una ondata.</T>
       <T id="ACH_BADGE_COMPLETE" l="0">COMPLETATO</T>
       <T id="ACH_BADGE_LOCKED" l="0">BLOCCATO</T>
       <T id="ACH_STATS_UNLOCKED" l="0">SBLOCCATI: {0} / {1}</T>
@@ -224,6 +238,7 @@ Oppure travolgi i corridoi per superare le difese.</T>
       <T id="CHALLENGE_WAVES" l="0">Ondate: {0}</T>
       <T id="CHALLENGE_TEAMS_ENABLED" l="0">Squadre: abilitate</T>
       <T id="CHALLENGE_PLAYERS_LABEL" l="0">Giocatori:</T>
+      <T id="CHALLENGE_LOADOUTS" l="0">Schieramenti</T>
       <T id="CHALLENGE_AI_LABEL" l="0">IA {0}</T>
       <T id="CHALLENGE_HUMAN_LABEL" l="0">Umano</T>
       <T id="CHALLENGE_START" l="0">AVVIA SFIDA</T>

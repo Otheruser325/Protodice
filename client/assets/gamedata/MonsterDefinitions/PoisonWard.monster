@@ -9,7 +9,8 @@
 	"Ammo": 1,
 	"ReloadDelay": 1,
     "TargetingMode": "First",
-    "ProjectileSprite": "null",
+    "ProjectileMotion": "Straight",
+    "ProjectileSprite": "poison_ball",
 	"DisplaySprite": "poisonward",
 	"SpecialEffects": [],
     "StatusEffects": [

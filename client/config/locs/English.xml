@@ -158,18 +158,32 @@
             <T id="ACH_TIME_1H_DESC" l="0">Play Protodice for 1 hour total.</T>
             <T id="ACH_TIME_12H_TITLE" l="0">All In</T>
             <T id="ACH_TIME_12H_DESC" l="0">Play Protodice for 12 hours total.</T>
+            <T id="ACH_TIME_24H_TITLE" l="0">Diceaholic</T>
+            <T id="ACH_TIME_24H_DESC" l="0">Play Protodice for 24 hours total.</T>
             <T id="ACH_WINS_1_TITLE" l="0">First Victory</T>
             <T id="ACH_WINS_1_DESC" l="0">Win your first match.</T>
             <T id="ACH_WINS_10_TITLE" l="0">Veteran Commander</T>
             <T id="ACH_WINS_10_DESC" l="0">Win 10 matches.</T>
-            <T id="ACH_DEFEAT_ENEMIES_TITLE" l="0">Enemy Down</T>
-            <T id="ACH_DEFEAT_ENEMIES_DESC" l="0">Defeat 250 enemies (monsters as defender / defences as attacker).</T>
-            <T id="ACH_AUGMENTED_TITLE" l="0">Augmented</T>
-            <T id="ACH_AUGMENTED_DESC" l="0">Buy an Epic unit in the shop.</T>
-            <T id="ACH_DARKEST_HOUR_TITLE" l="0">In Our Darkest Hour...</T>
-            <T id="ACH_DARKEST_HOUR_DESC" l="0">Buy a Legendary unit in the shop.</T>
+            <T id="ACH_WINS_50_TITLE" l="0">Specialised Commander</T>
+            <T id="ACH_WINS_50_DESC" l="0">Win 50 matches.</T>
+            <T id="ACH_KILLS_50_TITLE" l="0">Enemy Down</T>
+            <T id="ACH_KILLS_50_DESC" l="0">Defeat 50 enemies (monsters as defender / defences as attacker).</T>
+            <T id="ACH_KILLS_250_TITLE" l="0">No More Messing Around</T>
+            <T id="ACH_KILLS_250_DESC" l="0">Defeat 250 enemies.</T>
+            <T id="ACH_KILLS_1000_TITLE" l="0">Monster Slayer</T>
+            <T id="ACH_KILLS_1000_DESC" l="0">Defeat 1,000 enemies.</T>
+            <T id="ACH_DAILY_1_TITLE" l="0">Challenger</T>
+            <T id="ACH_DAILY_1_DESC" l="0">Beat a daily challenge.</T>
+            <T id="ACH_DAILY_10_TITLE" l="0">Problem Solver</T>
+            <T id="ACH_DAILY_10_DESC" l="0">Beat 10 daily challenges.</T>
+            <T id="ACH_OWN_EPIC_TITLE" l="0">Augmented</T>
+            <T id="ACH_OWN_EPIC_DESC" l="0">Obtain an Epic unit.</T>
+            <T id="ACH_OWN_LEGENDARY_TITLE" l="0">In Our Darkest Hour...</T>
+            <T id="ACH_OWN_LEGENDARY_DESC" l="0">Obtain a Legendary unit.</T>
             <T id="ACH_HELLSCAPE_TITLE" l="0">Hellscape</T>
             <T id="ACH_HELLSCAPE_DESC" l="0">Defeat Deucifer in Deucifer's Pit.</T>
+            <T id="ACH_TICKLER_TITLE" l="0">The Tickler</T>
+            <T id="ACH_TICKLER_DESC" l="0">Deal over 100 fire/poison damage in a match.</T>
             <T id="ACH_STUN_WAVE_TITLE" l="0">Who's Stunning Now?</T>
             <T id="ACH_STUN_WAVE_DESC" l="0">Stun or freeze 5 enemies in one wave.</T>
             <T id="ACH_BADGE_COMPLETE" l="0">COMPLETED</T>
@@ -208,6 +222,7 @@
             <T id="CHALLENGE_WAVES" l="0">Waves: {0}</T>
             <T id="CHALLENGE_TEAMS_ENABLED" l="0">Teams: Enabled</T>
             <T id="CHALLENGE_PLAYERS_LABEL" l="0">Players:</T>
+            <T id="CHALLENGE_LOADOUTS" l="0">Loadouts</T>
             <T id="CHALLENGE_AI_LABEL" l="0">AI {0}</T>
             <T id="CHALLENGE_HUMAN_LABEL" l="0">Human</T>
             <T id="CHALLENGE_START" l="0">START CHALLENGE</T>

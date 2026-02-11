@@ -11,21 +11,21 @@ export default class ChangelogScene extends Phaser.Scene {
 
   create() {
     try {
-        ErrorHandler.setScene(this);
+      ErrorHandler.setScene(this);
     } catch (e) {}
-	  try {
-        GlobalBackground.registerScene(this, { key: 'bg', useImageIfAvailable: true });
+    try {
+      GlobalBackground.registerScene(this, { key: 'bg', useImageIfAvailable: true });
     } catch (e) {}
     try {
       GlobalAchievements.registerScene(this);
     } catch (e) {}
 
-    const CENTER_X = 600;
-    const VIEW_WIDTH = 320;
-    const VIEW_TOP = 160;
-    const VIEW_HEIGHT = 440;
+    const CENTER_X = this.cameras.main.centerX;
+    const VIEW_WIDTH = Math.min(900, this.cameras.main.width - 140);
+    const VIEW_TOP = 140;
+    const VIEW_HEIGHT = Math.min(560, this.cameras.main.height - 220);
     const t = (key, fallback) => GlobalLocalization.t(key, fallback);
-    
+
     const data = this.cache.json.get('changelog');
     if (!data) {
       console.warn('Changelog JSON missing');
@@ -34,7 +34,7 @@ export default class ChangelogScene extends Phaser.Scene {
 
     // Title
     this.add.text(CENTER_X, 70, data.title ?? t('CHANGELOG_TITLE', 'Changelog'), {
-      fontSize: '40px',
+      fontSize: '36px',
       fontFamily: '"Press Start 2P", cursive',
       color: '#ffffff'
     }).setOrigin(0.5);
@@ -47,31 +47,50 @@ export default class ChangelogScene extends Phaser.Scene {
     data.entries.forEach(entry => {
       // Version header
       const header = this.add.text(0, y,
-        `v${entry.version} — ${entry.date}`,
+        `Version ${entry.version}`,
         {
           fontSize: '20px',
-          fontFamily: '"Press Start 2P", cursive', 
+          fontFamily: '"Press Start 2P", cursive',
           color: '#ffff66'
         }
       );
       this.content.add(header);
-      y += header.height + 6;
+      y += header.height + 4;
+
+      if (entry.date) {
+        const dateText = this.add.text(0, y, `Date: ${entry.date}`, {
+          fontSize: '12px',
+          fontFamily: '"Press Start 2P", cursive',
+          color: '#bbbbbb'
+        });
+        this.content.add(dateText);
+        y += dateText.height + 6;
+      }
 
       // Tags
       if (entry.tags?.length) {
-        const tagText = entry.tags.map(t => `[${t}]`).join(' ');
+        const tagText = `Tags: ${entry.tags.join(', ')}`;
         const tags = this.add.text(0, y, tagText, {
           fontSize: '12px',
           fontFamily: '"Press Start 2P", cursive',
-          color: '#8ecae6'
+          color: '#8ecae6',
+          wordWrap: { width: VIEW_WIDTH - 20 }
         });
         this.content.add(tags);
         y += tags.height + 10;
       }
 
+      const changesLabel = this.add.text(0, y, 'Changes:', {
+        fontSize: '12px',
+        fontFamily: '"Press Start 2P", cursive',
+        color: '#ffffff'
+      });
+      this.content.add(changesLabel);
+      y += changesLabel.height + 6;
+
       // Changes
       entry.changes.forEach(change => {
-        const bullet = this.add.text(20, y, `• ${change}`, {
+        const bullet = this.add.text(20, y, `- ${change}`, {
           fontSize: '12px',
           fontFamily: '"Press Start 2P", cursive',
           color: '#ffffff',
@@ -112,7 +131,7 @@ export default class ChangelogScene extends Phaser.Scene {
 
     const backBtn = this.add.text(100, 80, t('UI_BACK', '<- BACK'), {
       fontSize: '24px',
-      fontFamily: '"Press Start 2P", cursive', 
+      fontFamily: '"Press Start 2P", cursive',
       color: '#ff6666'
     })
       .setOrigin(0.5)

@@ -275,16 +275,25 @@ class AudioManager {
   }
 
   // ------------ SFX ------------
+  playSfx(scene, key, options = null) {
+    if (!scene || !scene.sound || !key) return;
+    const settings = GlobalSettings.get(scene) || {};
+    if (settings.audio === false) return;
+    let opts = { volume: 0.6 };
+    if (typeof options === 'number') {
+      opts.volume = options;
+    } else if (options && typeof options === 'object') {
+      opts = { ...opts, ...options };
+    }
+    try { scene.sound.play(key, opts); } catch (e) {}
+  }
+
   playButton(scene) {
-    const settings = GlobalSettings.get(scene);
-    if (!settings.audio) return;
-    try { scene.sound.play('button', { volume: 0.5 }); } catch (e) {}
+    this.playSfx(scene, 'button', 0.5);
   }
 
   playDice(scene) {
-    const settings = GlobalSettings.get(scene);
-    if (!settings.audio) return;
-    try { scene.sound.play('dice', { volume: 0.5 }); } catch (e) {}
+    this.playSfx(scene, 'dice', 0.5);
   }
 
   comboSFX(scene, comboName) {
@@ -301,7 +310,7 @@ class AudioManager {
     }[comboName];
 
     if (key) {
-      try { scene.sound.play(key, { volume: 0.6 }); } catch (e) {}
+      this.playSfx(scene, key, 0.6);
     }
   }
 };

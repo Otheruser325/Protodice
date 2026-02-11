@@ -1,0 +1,8 @@
+﻿<?xml version="1.0" ?>
+<SpriteInformation>
+    <FrameInformation name="love_arrow" texh="70" texw="120" type="png">
+        <Animation name="love_arrow">
+            <Cell ah="70" aw="120" ax="0" ay="0" h="70" name="love_arrow" w="120" x="0" y="0"/>
+        </Animation>
+    </FrameInformation>
+</SpriteInformation>

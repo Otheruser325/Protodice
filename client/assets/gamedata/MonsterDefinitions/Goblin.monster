@@ -9,6 +9,7 @@
 	"Ammo": 3,
 	"ReloadDelay": 2,
     "TargetingMode": "First",
+	"ProjectileMotion": "None",
     "ProjectileSprite": "null",
 	"DisplaySprite": "goblin",
 	"SpecialEffects": [],

@@ -1,0 +1,8 @@
+﻿<?xml version="1.0" ?>
+<SpriteInformation>
+    <FrameInformation name="arrow" texh="30" texw="128" type="png">
+        <Animation name="arrow">
+            <Cell ah="30" aw="128" ax="0" ay="0" h="30" name="arrow" w="128" x="0" y="0"/>
+        </Animation>
+    </FrameInformation>
+</SpriteInformation>

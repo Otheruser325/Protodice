@@ -8,6 +8,7 @@
 	"Ammo": 1,
 	"ReloadDelay": 3,
     "TargetingMode": "First",
+	"ProjectileMotion": "Straight",
     "ProjectileSprite": "shell",
 	"DisplaySprite": "boomcannon",
 	"SpecialEffects": [

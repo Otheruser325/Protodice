@@ -8,6 +8,7 @@
 	"Ammo": 2,
 	"ReloadDelay": 1,
     "TargetingMode": "Any",
+	"ProjectileMotion": "None",
     "ProjectileSprite": "null",
 	"DisplaySprite": "shredder",
 	"SpecialEffects": [ 

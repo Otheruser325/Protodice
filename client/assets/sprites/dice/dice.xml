@@ -1,0 +1,8 @@
+<?xml version="1.0" ?>
+<SpriteInformation>
+    <FrameInformation name="dice" texh="302" texw="499" type="png">
+        <Animation name="dice">
+            <Cell ah="302" aw="499" ax="0" ay="0" h="302" name="dice" w="499" x="0" y="0"/>
+        </Animation>
+    </FrameInformation>
+</SpriteInformation>

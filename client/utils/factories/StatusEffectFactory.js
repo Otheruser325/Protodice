@@ -5,6 +5,7 @@ import MonsterFactory from './MonsterFactory.js';
 import SpecialEffectFactory from './SpecialEffectFactory.js';
 import StatusEffectVisuals from '../StatusEffectVisuals.js';
 import GlobalAchievements from '../AchievementsManager.js';
+import GlobalAudio from '../AudioManager.js';
 
 /**
  * Applies, ticks, and scales status effects across units.
@@ -213,6 +214,24 @@ export default class StatusEffectFactory {
 
         if (!Array.isArray(target.status)) target.status = [];
 
+        const playStatusSound = (statusType) => {
+            const soundKey = {
+                'Acid': 'acid',
+                'Charm': 'charm',
+                'Fire': 'fire',
+                'Frozen': 'freeze',
+                'Knockback': 'knockback',
+                'Poison': 'poison',
+                'Purge': 'purge',
+                'Slow': 'slow',
+                'Stun': 'stun',
+            }[statusType];
+
+            if (!soundKey) return;
+            const scene = target.scene || target.sprite?.scene || copy._source?.sprite?.scene || null;
+            GlobalAudio.playSfx(scene, soundKey, 0.6);
+        };
+
         // Targeting filter for status effects (unit type / status requirements)
         if (copy.TargetingFilter && !SpecialEffectFactory._passesTargetingFilter(target, copy.TargetingFilter, copy._source)) {
             return;
@@ -243,6 +262,7 @@ export default class StatusEffectFactory {
 
         // Instant effects (do not persist in status array)
         if (copy.Type === 'Knockback') {
+            playStatusSound(copy.Type);
             StatusEffectFactory._applyKnockback(copy, target);
             return;
         }
@@ -289,6 +309,9 @@ export default class StatusEffectFactory {
                 shortestDurationEffect.Duration = copy.Duration;
                 shortestDurationEffect.Value = copy.Value;
             }
+            if (isNewStatus) {
+                playStatusSound(copy.Type);
+            }
             return;
         }
         if (copy.Type === 'Stun' || copy.Type === 'Frozen') {
@@ -311,26 +334,8 @@ export default class StatusEffectFactory {
             target.applyStatus(copy);
             
             // Play status effect sound when first applied
-            if (isNewStatus && target.scene && target.scene.sound) {
-                const soundKey = {
-                    'Acid': 'acid',
-                    'Charm': 'charm',
-                    'Fire': 'fire',
-                    'Frozen': 'freeze',
-                    'Knockback': 'knockback',
-                    'Poison': 'poison',
-                    'Purge': 'purge',
-                    'Slow': 'slow',
-                    'Stun': 'stun',
-                }[copy.Type];
-                
-                if (soundKey) {
-                    try {
-                        target.scene.sound.play(soundKey, { volume: 0.6 });
-                    } catch (e) {
-                        if (DEBUG_MODE) console.warn(`[Status][Sound] failed to play ${soundKey}`, e);
-                    }
-                }
+            if (isNewStatus) {
+                playStatusSound(copy.Type);
             }
         }
 
@@ -474,8 +479,9 @@ export default class StatusEffectFactory {
                             const dealt = (preHp !== null && postHp !== null) ? Math.max(0, preHp - postHp) : Math.max(0, final);
                             unit._pendingStatusDamage = (unit._pendingStatusDamage || 0) + final;
                             if (scene && typeof scene._trackDamage === 'function') {
-                                scene._trackDamage(s._source, dealt);
+                                scene._trackDamage(s._source, dealt, s.Type);
                             }
+                            CombatFactory._showFireDamage(scene, unit, final);
                             const sourceName = s._source?.typeName || 'unknown';
                             if (DEBUG_MODE) console.log(`[Status][WaveStart][Fire] ${unit.fullName} takes ${final} fire dmg (base=${base}, scaling=${waveScaling.toFixed(2)}, source=${sourceName}) -> hp=${unit.currentHealth}/${unit.health}`);
                             if (unit.currentHealth <= 0 && !unitsToCleanup.includes(unit)) {
@@ -499,8 +505,9 @@ export default class StatusEffectFactory {
                             const dealt = (preHp !== null && postHp !== null) ? Math.max(0, preHp - postHp) : Math.max(0, final);
                             unit._pendingStatusDamage = (unit._pendingStatusDamage || 0) + final;
                             if (scene && typeof scene._trackDamage === 'function') {
-                                scene._trackDamage(s._source, dealt);
+                                scene._trackDamage(s._source, dealt, s.Type);
                             }
+                            CombatFactory._showPoisonDamage(scene, unit, final);
                             const sourceName = s._source?.typeName || 'unknown';
                             if (DEBUG_MODE) console.log(`[Status][WaveStart][Poison] ${unit.fullName} takes ${final} poison dmg (base=${base}, scaling=${waveScaling.toFixed(2)}, source=${sourceName}) -> hp=${unit.currentHealth}/${unit.health}`);
                             if (unit.currentHealth <= 0 && !unitsToCleanup.includes(unit)) {
@@ -625,7 +632,7 @@ export default class StatusEffectFactory {
                 // Play death sound based on unit type
                 try {
                     const scene = unit.scene || unit.sprite?.scene;
-                    if (scene && scene.sound) {
+                    if (scene) {
                         const isDefence = unit.typeName in DefenceFactory.defenceData;
                         const isMonster = unit.typeName in MonsterFactory.monsterData;
                         
@@ -635,7 +642,7 @@ export default class StatusEffectFactory {
                             (isMonster ? 'monster_death' : null) || 
                             'unit_death';
                         
-                        scene.sound.play(deathSound, { volume: 0.5 });
+                        GlobalAudio.playSfx(scene, deathSound, 0.5);
                     }
                 } catch (e) {
                     // Sound not available, continue silently

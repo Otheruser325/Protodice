@@ -166,7 +166,7 @@ Ou submergez les voies pour percer les d&#233;fenses.</T>
       <T id="ACH_TITLE" l="0">SUCC&#200;S</T>
       <T id="ACH_FIRSTPLAY_TITLE" l="0">Je d&#233;bute</T>
       <T id="ACH_FIRSTPLAY_DESC" l="0">Jouez &#224; Protodice pour la premi&#232;re fois.</T>
-      <T id="ACH_WAVES_100_TITLE" l="0">Warm-Up Vagues</T>
+      <T id="ACH_WAVES_100_TITLE" l="0">Vagues d&#39;&#233;chauffement</T>
       <T id="ACH_WAVES_100_DESC" l="0">Progresser de 100 vagues au total.</T>
       <T id="ACH_WAVES_500_TITLE" l="0">V&#233;t&#233;ran aguerri</T>
       <T id="ACH_WAVES_500_DESC" l="0">Progresser de 500 vagues au total.</T>
@@ -176,18 +176,32 @@ Ou submergez les voies pour percer les d&#233;fenses.</T>
       <T id="ACH_TIME_1H_DESC" l="0">Jouer &#224; Protodice pendant 1 heure au total.</T>
       <T id="ACH_TIME_12H_TITLE" l="0">Tout pour le tout</T>
       <T id="ACH_TIME_12H_DESC" l="0">Jouer &#224; Protodice pendant 12 heures au total.</T>
-      <T id="ACH_WINS_1_TITLE" l="0">First Victoire</T>
+      <T id="ACH_TIME_24H_TITLE" l="0">Accro aux d&#233;s</T>
+      <T id="ACH_TIME_24H_DESC" l="0">Jouer &#224; Protodice pendant 24 heures au total.</T>
+      <T id="ACH_WINS_1_TITLE" l="0">Premi&#232;re victoire</T>
       <T id="ACH_WINS_1_DESC" l="0">Gagner votre premier match.</T>
       <T id="ACH_WINS_10_TITLE" l="0">Commandant v&#233;t&#233;ran</T>
       <T id="ACH_WINS_10_DESC" l="0">Gagner 10 matchs.</T>
-      <T id="ACH_DEFEAT_ENEMIES_TITLE" l="0">Ennemi &#224; terre</T>
-      <T id="ACH_DEFEAT_ENEMIES_DESC" l="0">Vaincre 250 ennemis (monstres en d&#233;fenseur / d&#233;fenses en attaquant).</T>
-      <T id="ACH_AUGMENTED_TITLE" l="0">Augment&#233;</T>
-      <T id="ACH_AUGMENTED_DESC" l="0">Acheter an Epic unit in the shop.</T>
-      <T id="ACH_DARKEST_HOUR_TITLE" l="0">Dans nos heures les plus sombres...</T>
-      <T id="ACH_DARKEST_HOUR_DESC" l="0">Acheter a Legendary unit in the shop.</T>
+      <T id="ACH_WINS_50_TITLE" l="0">Commandant sp&#233;cialis&#233;</T>
+      <T id="ACH_WINS_50_DESC" l="0">Gagner 50 matchs.</T>
+      <T id="ACH_KILLS_50_TITLE" l="0">Ennemi &#224; terre</T>
+      <T id="ACH_KILLS_50_DESC" l="0">Vaincre 50 ennemis (monstres en d&#233;fenseur / d&#233;fenses en attaquant).</T>
+      <T id="ACH_KILLS_250_TITLE" l="0">Plus de plaisanteries</T>
+      <T id="ACH_KILLS_250_DESC" l="0">Vaincre 250 ennemis.</T>
+      <T id="ACH_KILLS_1000_TITLE" l="0">Tueur de monstres</T>
+      <T id="ACH_KILLS_1000_DESC" l="0">Vaincre 1 000 ennemis.</T>
+      <T id="ACH_DAILY_1_TITLE" l="0">Challenger</T>
+      <T id="ACH_DAILY_1_DESC" l="0">R&#233;ussir un d&#233;fi quotidien.</T>
+      <T id="ACH_DAILY_10_TITLE" l="0">R&#233;solveur de probl&#232;mes</T>
+      <T id="ACH_DAILY_10_DESC" l="0">R&#233;ussir 10 d&#233;fis quotidiens.</T>
+      <T id="ACH_OWN_EPIC_TITLE" l="0">Augment&#233;</T>
+      <T id="ACH_OWN_EPIC_DESC" l="0">Obtenir une unit&#233; &#233;pique.</T>
+      <T id="ACH_OWN_LEGENDARY_TITLE" l="0">Dans nos heures les plus sombres...</T>
+      <T id="ACH_OWN_LEGENDARY_DESC" l="0">Obtenir une unit&#233; l&#233;gendaire.</T>
       <T id="ACH_HELLSCAPE_TITLE" l="0">Pays des enfers</T>
       <T id="ACH_HELLSCAPE_DESC" l="0">Vaincre Deucifer dans la Fosse de Deucifer.</T>
+      <T id="ACH_TICKLER_TITLE" l="0">Le Chatouilleur</T>
+      <T id="ACH_TICKLER_DESC" l="0">Infliger plus de 100 d&#233;g&#226;ts de feu/poison en une partie.</T>
       <T id="ACH_STUN_WAVE_TITLE" l="0">Qui est &#233;tourdi maintenant ?</T>
       <T id="ACH_STUN_WAVE_DESC" l="0">&#201;tourdir ou geler 5 ennemis en une vague.</T>
       <T id="ACH_BADGE_COMPLETE" l="0">TERMIN&#201;</T>
@@ -224,6 +238,7 @@ Ou submergez les voies pour percer les d&#233;fenses.</T>
       <T id="CHALLENGE_WAVES" l="0">Vagues: {0}</T>
       <T id="CHALLENGE_TEAMS_ENABLED" l="0">&#201;quipes : activ&#233;es</T>
       <T id="CHALLENGE_PLAYERS_LABEL" l="0">Joueurs:</T>
+      <T id="CHALLENGE_LOADOUTS" l="0">&#201;quipements</T>
       <T id="CHALLENGE_AI_LABEL" l="0">IA {0}</T>
       <T id="CHALLENGE_HUMAN_LABEL" l="0">Humain</T>
       <T id="CHALLENGE_START" l="0">D&#201;MARRER LE D&#201;FI</T>

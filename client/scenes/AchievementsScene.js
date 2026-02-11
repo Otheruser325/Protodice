@@ -38,12 +38,19 @@ export default class AchievementsScene extends Phaser.Scene {
       { key: 'waves2500', title: t('ACH_WAVES_2500_TITLE', 'Endless War'), desc: t('ACH_WAVES_2500_DESC', 'Progress 2,500 waves total.') },
       { key: 'time1h', title: t('ACH_TIME_1H_TITLE', 'Just One More'), desc: t('ACH_TIME_1H_DESC', 'Play Protodice for 1 hour total.') },
       { key: 'time12h', title: t('ACH_TIME_12H_TITLE', 'All In'), desc: t('ACH_TIME_12H_DESC', 'Play Protodice for 12 hours total.') },
+      { key: 'time24h', title: t('ACH_TIME_24H_TITLE', 'Diceaholic'), desc: t('ACH_TIME_24H_DESC', 'Play Protodice for 24 hours total.') },
       { key: 'wins1', title: t('ACH_WINS_1_TITLE', 'First Victory'), desc: t('ACH_WINS_1_DESC', 'Win your first match.') },
       { key: 'wins10', title: t('ACH_WINS_10_TITLE', 'Veteran Commander'), desc: t('ACH_WINS_10_DESC', 'Win 10 matches.') },
-      { key: 'defeatEnemies', title: t('ACH_DEFEAT_ENEMIES_TITLE', 'Enemy Down'), desc: t('ACH_DEFEAT_ENEMIES_DESC', 'Defeat 250 enemies (monsters as defender / defences as attacker).') },
-      { key: 'augmented', title: t('ACH_AUGMENTED_TITLE', 'Augmented'), desc: t('ACH_AUGMENTED_DESC', 'Buy an Epic unit in the shop.') },
-      { key: 'darkestHour', title: t('ACH_DARKEST_HOUR_TITLE', 'In Our Darkest Hour...'), desc: t('ACH_DARKEST_HOUR_DESC', 'Buy a Legendary unit in the shop.') },
+      { key: 'wins50', title: t('ACH_WINS_50_TITLE', 'Specialised Commander'), desc: t('ACH_WINS_50_DESC', 'Win 50 matches.') },
+      { key: 'kills50', title: t('ACH_KILLS_50_TITLE', 'Enemy Down'), desc: t('ACH_KILLS_50_DESC', 'Defeat 50 enemies (monsters as defender / defences as attacker).') },
+      { key: 'kills250', title: t('ACH_KILLS_250_TITLE', 'No More Messing Around'), desc: t('ACH_KILLS_250_DESC', 'Defeat 250 enemies.') },
+      { key: 'kills1000', title: t('ACH_KILLS_1000_TITLE', 'Monster Slayer'), desc: t('ACH_KILLS_1000_DESC', 'Defeat 1,000 enemies.') },
+      { key: 'daily1', title: t('ACH_DAILY_1_TITLE', 'Challenger'), desc: t('ACH_DAILY_1_DESC', 'Beat a daily challenge.') },
+      { key: 'daily10', title: t('ACH_DAILY_10_TITLE', 'Problem Solver'), desc: t('ACH_DAILY_10_DESC', 'Beat 10 daily challenges.') },
+      { key: 'ownEpic', title: t('ACH_OWN_EPIC_TITLE', 'Augmented'), desc: t('ACH_OWN_EPIC_DESC', 'Obtain an Epic unit.') },
+      { key: 'ownLegendary', title: t('ACH_OWN_LEGENDARY_TITLE', 'In Our Darkest Hour...'), desc: t('ACH_OWN_LEGENDARY_DESC', 'Obtain a Legendary unit.') },
       { key: 'hellscape', title: t('ACH_HELLSCAPE_TITLE', 'Hellscape'), desc: t('ACH_HELLSCAPE_DESC', "Defeat Deucifer in Deucifer's Pit.") },
+      { key: 'tickler', title: t('ACH_TICKLER_TITLE', 'The Tickler'), desc: t('ACH_TICKLER_DESC', 'Deal over 100 fire/poison damage in a match.') },
       { key: 'stunWave', title: t('ACH_STUN_WAVE_TITLE', "Who's Stunning Now?"), desc: t('ACH_STUN_WAVE_DESC', 'Stun or freeze 5 enemies in one wave.') }
     ];
 

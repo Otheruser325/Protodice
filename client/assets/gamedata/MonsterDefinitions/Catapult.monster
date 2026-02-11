@@ -9,7 +9,8 @@
 	"Ammo": 1,
 	"ReloadDelay": 3,
     "TargetingMode": "First",
-    "ProjectileSprite": "boulder",
+	"ProjectileMotion": "Lobbed",
+    "ProjectileSprite": "flaming_boulder",
 	"DisplaySprite": "catapult",
 	"SpecialEffects": [
 	  {

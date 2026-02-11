@@ -2,6 +2,18 @@
   "title": "Protodice — Changelog",
   "entries": [
     {
+      "version": "0.6.0",
+      "date": "11/02/2026",
+      "tags": ["Pre-Release", "Updates"],
+      "changes": [
+	    "New Features: \n• added 8 new achievements",
+        "Quality of Life: \n• added projectiles during the combat loop\n• added sound effects across different effects\n• improved sprite initialisation and framework across the game\n• player loadouts are now displayed in the challenge scene to tell what you have and your opponent\n• added hotkeys (Spacebar/R, T) for rolling dice and ending turns respectively",
+		"Unit Balance: \n• Ghost: \n• now has a 10-wave lifespan instead of being on the battlefield permanently until defeated\n• Bat: \n• can fly over allied monsters (if it has the opportunity to do so)\n Harpy: \n• can fly over allied monsters (if it has the opportunity to do so)",
+        "Minor Changes: \n• improved combat loop so monsters don't often get stuck behind allied monsters\n• improved skirmisher behaviour",
+        "Bug Fixes: \n• fixed an edge case with force field behaviour causing disruptions across monster movement\n• minor fixes and improvements."
+      ]
+    },
+    {
       "version": "0.5.0",
       "date": "05/02/2026",
       "tags": ["Pre-Release"],

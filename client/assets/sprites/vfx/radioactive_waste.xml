@@ -1,0 +1,8 @@
+﻿<?xml version="1.0" ?>
+<SpriteInformation>
+    <FrameInformation name="radioactive_waste" texh="64" texw="64" type="png">
+        <Animation name="radioactive_waste">
+            <Cell ah="64" aw="64" ax="0" ay="0" h="64" name="radioactive_waste" w="64" x="0" y="0"/>
+        </Animation>
+    </FrameInformation>
+</SpriteInformation>
