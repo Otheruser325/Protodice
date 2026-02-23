@@ -1,4 +1,4 @@
-export const DEBUG_MODE = true;
+export const DEBUG_MODE = false;
 
 const getRuntimeDevBuildFlag = () => {
     if (typeof window === 'undefined' || !window.location) return false;
