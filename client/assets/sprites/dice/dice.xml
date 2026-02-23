@@ -2,7 +2,12 @@
 <SpriteInformation>
     <FrameInformation name="dice" texh="302" texw="499" type="png">
         <Animation name="dice">
-            <Cell ah="302" aw="499" ax="0" ay="0" h="302" name="dice" w="499" x="0" y="0"/>
+            <Cell ah="105" aw="97" ax="0" ay="0" h="105" name="1" w="97" x="47" y="30"/>
+            <Cell ah="105" aw="100" ax="0" ay="0" h="105" name="2" w="100" x="199" y="30"/>
+            <Cell ah="105" aw="97" ax="0" ay="0" h="105" name="3" w="97" x="354" y="30"/>
+            <Cell ah="102" aw="97" ax="0" ay="0" h="102" name="4" w="97" x="47" y="153"/>
+            <Cell ah="102" aw="100" ax="0" ay="0" h="102" name="5" w="100" x="199" y="153"/>
+            <Cell ah="102" aw="97" ax="0" ay="0" h="102" name="6" w="97" x="354" y="153"/>
         </Animation>
     </FrameInformation>
 </SpriteInformation>

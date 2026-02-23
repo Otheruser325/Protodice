@@ -40,6 +40,9 @@ export default class LocalGameScene extends Phaser.Scene {
         this._protoVisualIndices = new Set();
         this.rolledThisTurn = false;
         this._combatInProgress = false;
+        this._aiTurnInProgress = false;
+        this._aiTurnToken = 0;
+        this._sceneClosing = false;
         this.units = [];
         this.totalPlayers = 2;
         this.playerBar = [];
@@ -81,6 +84,8 @@ export default class LocalGameScene extends Phaser.Scene {
         this._challengeReward = 0;
         this._challengeLoadouts = null;
         this._matchId = null;
+        this._isCleaningUp = false;
+        this._movementResolutionTick = 0;
         this._t = (key, fallback) => GlobalLocalization.t(key, fallback);
         this._fmt = (key, ...args) => GlobalLocalization.format(key, ...args);
     }
@@ -108,6 +113,11 @@ export default class LocalGameScene extends Phaser.Scene {
         this._challengeReward = Number(data.challengeReward || 0);
         this._challengeLoadouts = data.challengeLoadouts || null;
         this._matchId = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+        this._isCleaningUp = false;
+        this._movementResolutionTick = 0;
+        this._sceneClosing = false;
+        this._aiTurnInProgress = false;
+        this._aiTurnToken = Number.isFinite(this._aiTurnToken) ? (this._aiTurnToken + 1) : 1;
 
         const allowedRows = [5, 6, 7];
         const allowedCols = [7, 9, 11, 13, 15];
@@ -168,7 +178,16 @@ export default class LocalGameScene extends Phaser.Scene {
             const pool = isDefence
                 ? (isProto ? DefenceFactory.getProtos() : DefenceFactory.getNormals())
                 : (isProto ? MonsterFactory.getProtos() : MonsterFactory.getNormals());
-            const names = (pool || []).map(u => u?.TypeName).filter(Boolean);
+            const names = (pool || [])
+                .filter(u => {
+                    if (!u) return false;
+                    if (u.ExcludeFromRandomLoadouts) return false;
+                    if (u.IsDevOnly) return false;
+                    if (/^test/i.test(String(u.TypeName || ''))) return false;
+                    return true;
+                })
+                .map(u => u?.TypeName)
+                .filter(Boolean);
             if (names.length < 5) return null;
             const shuffled = names.slice().sort(() => Math.random() - 0.5);
             return shuffled.slice(0, 5);
@@ -700,16 +719,22 @@ export default class LocalGameScene extends Phaser.Scene {
         }
     }
 
-    _removeUnitCompletely(unit) {
+    _removeUnitCompletely(unit, options = {}) {
         if (!unit) return;
-        if (unit._beingRemoved) return;
+        if (unit._fullyRemoved) return;
+        if (unit._cleanupInProgress) return;
+        unit._cleanupInProgress = true;
+        const forceCleanup = !!options.forceCleanup;
         unit._beingRemoved = true;
-        try {
-            SpecialEffectFactory.handleOnDeath(unit, this);
-        } catch (e) {}
-        try {
-            SpecialEffectFactory.handleOnRemove(unit, this);
-        } catch (e) {}
+        if (!unit._deathLifecycleHandled) {
+            unit._deathLifecycleHandled = true;
+            try {
+                SpecialEffectFactory.handleOnDeath(unit, this);
+            } catch (e) {}
+            try {
+                SpecialEffectFactory.handleOnRemove(unit, this);
+            } catch (e) {}
+        }
         try {
             if (unit.position && Array.isArray(this.grid) &&
                 this.grid[unit.position.row] && this.grid[unit.position.row][unit.position.col]) {
@@ -731,9 +756,14 @@ export default class LocalGameScene extends Phaser.Scene {
 
         try {
             const unitName = unit.fullName || unit.typeName || this._t('GENERIC_UNIT', 'Unit');
-            const removedText = (typeof unit.currentHealth === 'number' && unit.currentHealth <= 0)
-                ? this._fmt('HISTORY_UNIT_DEFEATED', '{0} was defeated', unitName)
-                : this._fmt('HISTORY_UNIT_REMOVED', '{0} was removed', unitName);
+            let removedText = '';
+            if (unit._expiredByLifespan) {
+                removedText = this._fmt('HISTORY_UNIT_EXPIRED', '{0} expired', unitName);
+            } else {
+                removedText = (typeof unit.currentHealth === 'number' && unit.currentHealth <= 0)
+                    ? this._fmt('HISTORY_UNIT_DEFEATED', '{0} was defeated', unitName)
+                    : this._fmt('HISTORY_UNIT_REMOVED', '{0} was removed', unitName);
+            }
             this.addHistoryEntry(removedText);
         } catch (e) {}
         
@@ -774,10 +804,20 @@ export default class LocalGameScene extends Phaser.Scene {
         try {
             delete unit._owner;
         } catch (e) {}
+        try {
+            delete unit._expiredByLifespan;
+            delete unit._moveStepsTick;
+            delete unit._cachedMoveSteps;
+            delete unit._fractionalMoveAcc;
+        } catch (e) {}
 
         try {
             if (typeof this.updateHolders === 'function') this.updateHolders();
         } catch (e) {}
+        if (forceCleanup || unit._beingRemoved) {
+            unit._fullyRemoved = true;
+        }
+        unit._cleanupInProgress = false;
     }
 
     _resolveUnitSpriteKey(unit, isDefence) {
@@ -962,6 +1002,10 @@ export default class LocalGameScene extends Phaser.Scene {
     }
 
     create() {
+        if (this.events) {
+            this.events.once('shutdown', this.cleanup, this);
+        }
+
         try {
           ErrorHandler.setScene(this);
         } catch (e) {}
@@ -1309,7 +1353,7 @@ export default class LocalGameScene extends Phaser.Scene {
             } catch (e) {}
         }
         
-        if (currentPlayerObj && currentPlayerObj.isAI) {
+        if (currentPlayerObj && currentPlayerObj.isAI && !this._sceneClosing) {
             this.doAITurn();
         }
     }
@@ -1320,11 +1364,12 @@ export default class LocalGameScene extends Phaser.Scene {
         const player = this.players[this.currentPlayer];
         const isHuman = player && !player.isAI;
         
-        // Check if player has rolled and has no actions left
-        const myHolding = (this.holders || []).some(h => h._owner === this.currentPlayer);
+        const myHolderCount = (this.holders || []).filter(h => h && h._owner === this.currentPlayer).length;
+        const myHolding = myHolderCount > 0;
         const hasPlacement = this._hasPlacementAvailableForCurrentPlayer();
-        const noActions = this.rolledThisTurn && (!myHolding || !hasPlacement);
-        const canEndTurn = isHuman && noActions;
+        const noActionsAfterRoll = this.rolledThisTurn && (!myHolding || !hasPlacement);
+        const forcedNoRoll = !this.rolledThisTurn && myHolderCount >= 10 && !hasPlacement;
+        const canEndTurn = isHuman && (noActionsAfterRoll || forcedNoRoll);
         
         if (canEndTurn) {
             this.endTurnBtn.setColor('#ff4444');
@@ -1400,6 +1445,8 @@ export default class LocalGameScene extends Phaser.Scene {
     setDiceTextState() {
         const currentPlayerObj = this.players[this.currentPlayer];
         const humanTurn = currentPlayerObj && !currentPlayerObj.isAI;
+        const myHolderCount = (this.holders || []).filter(h => h && h._owner === this.currentPlayer).length;
+        const atHolderCap = myHolderCount >= 10;
         
         // Check if we have any prototype dice that need re-rolling
         const hasPrototypeDice = this.prototypeDiceIndices && this.prototypeDiceIndices.length > 0;
@@ -1407,12 +1454,22 @@ export default class LocalGameScene extends Phaser.Scene {
         if (hasPrototypeDice) {
             const prototypeCount = this.prototypeDiceIndices.length;
             this.diceText.setText(this._fmt('GAME_REROLL_PROTO', 'Reroll Proto ({0})', prototypeCount));
-            this.diceText.setColor('#ffd94d');
-            this.diceText.setInteractive();
+            if (humanTurn && !atHolderCap) {
+                this.diceText.setColor('#ffd94d');
+                this.diceText.setInteractive();
+            } else {
+                this.diceText.setColor('#999999');
+                this.diceText.disableInteractive?.();
+            }
         } else if (humanTurn && !this.rolledThisTurn) {
             this.diceText.setText(this._t('GAME_ROLL_DICE', 'Roll Dice'));
-            this.diceText.setColor('#66ff66');
-            this.diceText.setInteractive();
+            if (atHolderCap) {
+                this.diceText.setColor('#999999');
+                this.diceText.disableInteractive?.();
+            } else {
+                this.diceText.setColor('#66ff66');
+                this.diceText.setInteractive();
+            }
         } else if (humanTurn && this.rolledThisTurn) {
             this.diceText.setText(this._t('GAME_ROLL_DICE', 'Roll Dice'));
             this.diceText.setColor('#999999');
@@ -1779,6 +1836,9 @@ export default class LocalGameScene extends Phaser.Scene {
                         
                         this._draggingHolder = null;
                         
+                        // Roll-dice state can change when holder count drops below cap
+                        if (typeof this.setDiceTextState === 'function') this.setDiceTextState();
+
                         // Update end turn button state after placement
                         if (typeof this.updateEndTurnButtonState === 'function') this.updateEndTurnButtonState();
                     };
@@ -1980,29 +2040,33 @@ export default class LocalGameScene extends Phaser.Scene {
                         if (DEBUG_MODE) console.log('[endTurn] revive exhausted for', u.typeName);
                     }
 
-                    // No revive - finalize death
-                    if (!u._beingRemoved) {
+                    // No revive - finalize death (force cleanup even if already marked removing)
+                    if (!u._deathSoundPlayed) {
                         // Play death sound based on unit type
                         try {
                             if (this.sound) {
                                 const isDefence = u.typeName in DefenceFactory.defenceData;
                                 const isMonster = u.typeName in MonsterFactory.monsterData;
-                                
+
                                 // Try unit-specific death sound first, then type-specific, then fallback
-                                const deathSound = u.deathSound || u.DeathSound || 
-                                    (isDefence ? 'defence_death' : null) || 
-                                    (isMonster ? 'monster_death' : null) || 
+                                const deathSound = u.deathSound || u.DeathSound ||
+                                    (isDefence ? 'defence_death' : null) ||
+                                    (isMonster ? 'monster_death' : null) ||
                                     'unit_death';
-                                
+
                                 GlobalAudio.playSfx(this, deathSound, 0.5);
                             }
                         } catch (e) {
                             // Sound not available, continue silently
                         }
-                        this._removeUnitCompletely(u);
+                        u._deathSoundPlayed = true;
                     }
+                    this._removeUnitCompletely(u, { forceCleanup: true });
 
-                    // Update scores immediately when units are defeated
+                    // Update scores immediately when units are defeated (once per unit)
+                    if (u._defeatCounted) continue;
+                    u._defeatCounted = true;
+
                     if (u.typeName in MonsterFactory.monsterData) {
                         this.defeatedMonsters++;
                         const defencePlayerIndex = this.players.findIndex(p => p.role === 'defence');
@@ -2351,7 +2415,22 @@ export default class LocalGameScene extends Phaser.Scene {
     }
 
     _getAIColOrderForUnit(unit, isDefence) {
+        const diff = String(this.difficulty || 'medium').toLowerCase();
+        const isLowDiff = (diff === 'baby' || diff === 'easy');
         const profile = this._getAIUnitPlacementProfile(unit);
+
+        if (isDefence && !isLowDiff) {
+            const typeName = String(unit?.typeName || '');
+            const unitRange = Number(unit?.range);
+            const isRangeBelowThree = Number.isFinite(unitRange) && unitRange > 0 && unitRange < 3;
+            if (typeName === 'Landmine' || profile.isTrap) {
+                return this._getAIBackToFrontColumns(true);
+            }
+            if (isRangeBelowThree && !profile.isWall) {
+                return this._getAIMidOutColumns(true);
+            }
+        }
+
         if (profile.isFrontline) return this._getAIFrontToBackColumns(isDefence);
         if (profile.isBackline || profile.isSupport) return this._getAIBackToFrontColumns(isDefence);
         if (profile.isGeneralist) return this._getAIMidOutColumns(isDefence);
@@ -2798,7 +2877,13 @@ export default class LocalGameScene extends Phaser.Scene {
     }
 
     async doAITurn() {
+        const turnToken = Number.isFinite(this._aiTurnToken) ? (this._aiTurnToken + 1) : 1;
+        this._aiTurnToken = turnToken;
         this._aiTurnInProgress = true;
+        const isTurnCancelled = () => {
+            const inactive = (this.sys && typeof this.sys.isActive === 'function') ? !this.sys.isActive() : false;
+            return this._sceneClosing || this._aiTurnToken !== turnToken || inactive;
+        };
         
         // Disable buttons during AI turn
         try {
@@ -2822,6 +2907,7 @@ export default class LocalGameScene extends Phaser.Scene {
         try {
             // Apply thinking delay based on difficulty
             await this._wait(thinkingTime);
+            if (isTurnCancelled()) return;
 
             // Map difficulty to luck factor:
             // Baby: 0.5, Easy: 0.75, Medium: 1, Hard: 1.5, Nightmare: 2
@@ -2836,6 +2922,7 @@ export default class LocalGameScene extends Phaser.Scene {
             
             // Roll dice (supports multiple dice)
             await this.rollDice(true, luckFactor);
+            if (isTurnCancelled()) return;
             
             // Handle prototype re-rolls for all dice that showed 6
             while (this.prototypeDiceIndices && this.prototypeDiceIndices.length > 0) {
@@ -2847,62 +2934,141 @@ export default class LocalGameScene extends Phaser.Scene {
                 }
                 
                 await this._wait(thinkingTime / 2);
+                if (isTurnCancelled()) return;
                 
                 // Roll all prototype dice at once
                 const indicesToRoll = [...this.prototypeDiceIndices];
                 await this.rollDice(true, luckFactor, indicesToRoll);
+                if (isTurnCancelled()) return;
             }
 
             this.rolledThisTurn = true;
             
             // Ensure dice text is updated after all prototype re-rolls are complete
             this.setDiceTextState();
+            if (isTurnCancelled()) return;
 
             const player = this.players[this.currentPlayer];
             const isDefence = player.role === 'defence';
             const analysis = this._analyzeGridForPlacement(isDefence);
             const toPlace = (this.holders || []).filter(h => h._owner === this.currentPlayer);
             const threatEnabled = isDefence && (diff === 'hard' || diff === 'nightmare');
+            const easyDiffs = ['baby', 'easy', 'medium'];
+            const emergencyThresholdByDiff = {
+                baby: 4,
+                easy: 4,
+                medium: 3
+            };
+            const emergencyThreshold = emergencyThresholdByDiff[diff] ?? 2;
+            const urgentDefenceRows = (isDefence && easyDiffs.includes(diff))
+                ? Object.keys(analysis.enemyFrontCol || {})
+                    .map(k => Number(k))
+                    .filter(r => Number.isFinite(r))
+                    .filter(r => Number.isFinite(analysis.enemyFrontCol?.[r]) && (analysis.enemyFrontCol[r] <= emergencyThreshold))
+                    .sort((a, b) => (analysis.enemyFrontCol[a] ?? 99) - (analysis.enemyFrontCol[b] ?? 99))
+                : [];
+            const emergencyEnabled = isDefence && easyDiffs.includes(diff) && urgentDefenceRows.length > 0;
+            const nearWinconThreat = isDefence && urgentDefenceRows.some((r) => (analysis.enemyFrontCol?.[r] ?? 99) <= 1);
+            const spreadRowsEnabled = (this.diceCount || 1) >= 2 && ['medium', 'hard', 'nightmare'].includes(diff);
+            const usedPlacementRows = new Set();
+            const prioritizeUnusedRows = (rows = []) => {
+                if (!spreadRowsEnabled || !Array.isArray(rows) || rows.length === 0) return rows;
+                const uniqueRows = rows.filter((row, idx) => rows.indexOf(row) === idx);
+                const unseen = uniqueRows.filter((row) => !usedPlacementRows.has(row));
+                const seen = uniqueRows.filter((row) => usedPlacementRows.has(row));
+                return [...unseen, ...seen];
+            };
+            const mergeRowPriority = (baseRows = []) => {
+                const out = [];
+                const pushUnique = (rows) => {
+                    if (!Array.isArray(rows)) return;
+                    rows.forEach((row) => {
+                        if (!Number.isFinite(row)) return;
+                        if (!out.includes(row)) out.push(row);
+                    });
+                };
+                pushUnique(urgentDefenceRows);
+                pushUnique(baseRows);
+                return out;
+            };
+            const tryPlaceWithPriority = (unit, rowOrder, colOrder, allowThreatSort = true) => {
+                for (let ri = 0; ri < rowOrder.length; ri++) {
+                    const r = rowOrder[ri];
+                    let nextColOrder = colOrder;
+                    if (allowThreatSort && threatEnabled) {
+                        const threatCol = analysis.enemyFrontCol?.[r];
+                        if (Number.isFinite(threatCol)) {
+                            nextColOrder = colOrder.slice().sort((a, b) => {
+                                const da = Math.abs(a - threatCol);
+                                const db = Math.abs(b - threatCol);
+                                if (da === db) return a - b;
+                                return da - db;
+                            });
+                        }
+                    }
+                    for (let ci = 0; ci < nextColOrder.length; ci++) {
+                        const c = nextColOrder[ci];
+                        if (!this.grid[r] || !this.grid[r][c]) continue;
+                        if (this.grid[r][c].unit) continue;
+                        if (this._placeUnitOnGrid(unit, r, c)) return true;
+                    }
+                }
+                return false;
+            };
 
             for (const unit of toPlace) {
+                if (isTurnCancelled()) return;
                 if (thinkingTime > 500) {
                     await this._wait(200);
+                    if (isTurnCancelled()) return;
                 }
                 
                 let placed = false;
-                const rowPriority = this._getAIRowPriorityForUnit(isDefence, unit, analysis);
+                const profile = this._getAIUnitPlacementProfile(unit);
+                const unitRange = Number(unit?.range);
+                const isRangeBelowThree = Number.isFinite(unitRange) && unitRange > 0 && unitRange < 3;
+                const hasBlindSpot = !!unit?.hasBlindSpot || !!unit?.HasBlindSpot || Number(unit?.blindRange || unit?.BlindRange || 0) > 0;
+                const avoidFrontForBlindSpot = isDefence && threatEnabled && hasBlindSpot;
+                const rowPriority = prioritizeUnusedRows(mergeRowPriority(this._getAIRowPriorityForUnit(isDefence, unit, analysis)));
                 const baseColOrder = this._getAIColOrderForUnit(unit, isDefence);
+                const preferredCols = avoidFrontForBlindSpot ? this._getAIBackToFrontColumns(isDefence) : baseColOrder;
+
+                // Medium and lower defence bots: emergency-first placement pass.
+                // This ensures immediate responses on collapsing lanes before normal heuristics.
+                if (!placed && emergencyEnabled) {
+                    let emergencyCols = preferredCols;
+                    const mediumBacklineBias = (diff === 'medium') && isRangeBelowThree && !profile.isWall && nearWinconThreat;
+                    const frontResponder = !(profile.isTrap || profile.isBackline || profile.isSupport || avoidFrontForBlindSpot || mediumBacklineBias);
+                    if (frontResponder) emergencyCols = this._getAIFrontToBackColumns(true);
+                    placed = tryPlaceWithPriority(unit, prioritizeUnusedRows(urgentDefenceRows), emergencyCols, false);
+                }
                 
                 // Standard placement for all difficulties
                 if (!placed) {
-                    for (let ri = 0; ri < rowPriority.length && !placed; ri++) {
-                        const r = rowPriority[ri];
-                        let colOrder = baseColOrder;
-                        if (threatEnabled) {
-                            const threatCol = analysis.enemyFrontCol?.[r];
-                            if (Number.isFinite(threatCol)) {
-                                colOrder = baseColOrder.slice().sort((a, b) => {
-                                    const da = Math.abs(a - threatCol);
-                                    const db = Math.abs(b - threatCol);
-                                    if (da === db) return a - b;
-                                    return da - db;
-                                });
-                            }
-                        }
-                        for (let ci = 0; ci < colOrder.length && !placed; ci++) {
-                            const c = colOrder[ci];
-                            if (!this.grid[r] || !this.grid[r][c]) continue;
-                            if (!this.grid[r][c].unit) {
-                                if (this._placeUnitOnGrid(unit, r, c)) {
-                                    placed = true;
-                                }
-                            }
-                        }
-                    }
+                    placed = tryPlaceWithPriority(unit, rowPriority, preferredCols, !avoidFrontForBlindSpot);
+                }
+
+                // Fallback to any valid side cell when preferred rows are blocked.
+                if (!placed) {
+                    const fallbackRows = prioritizeUnusedRows(mergeRowPriority(this._getCenterOutRowOrder()));
+                    const fallbackCols = avoidFrontForBlindSpot
+                        ? this._getAIBackToFrontColumns(isDefence)
+                        : this._getAIMidOutColumns(isDefence);
+                    placed = tryPlaceWithPriority(unit, fallbackRows, fallbackCols, false);
+                }
+
+                if (placed && spreadRowsEnabled && Number.isFinite(unit?.position?.row)) {
+                    usedPlacementRows.add(unit.position.row);
                 }
             }
         } finally {
-            thinkingText.destroy();
+            try {
+                if (thinkingText && thinkingText.scene) thinkingText.destroy();
+            } catch (e) {}
+            if (isTurnCancelled()) {
+                this._aiTurnInProgress = false;
+                return;
+            }
 
             // Only destroy holder sprites that are NOT placed on the grid
             // (placed unit sprites are managed by the grid and should not be destroyed here)
@@ -2945,7 +3111,9 @@ export default class LocalGameScene extends Phaser.Scene {
                 this.updateEndTurnButtonState?.();
             } catch (e) {}
             
-            this.endTurn(true);
+            if (!isTurnCancelled()) {
+                this.endTurn(true);
+            }
         }
     }
 
@@ -3322,6 +3490,7 @@ export default class LocalGameScene extends Phaser.Scene {
             GlobalAudio.playButton(this);
 
             if (!this.exitLocked) {
+                this.cleanup();
                 this.scene.start('LocalConfigScene');
             } else {
                 this.showConfirmExit();
@@ -3377,6 +3546,20 @@ export default class LocalGameScene extends Phaser.Scene {
     }
 
     cleanup() {
+        if (this._isCleaningUp) return;
+        this._isCleaningUp = true;
+        this._sceneClosing = true;
+        this._aiTurnInProgress = false;
+        this._aiTurnToken = Number.isFinite(this._aiTurnToken) ? (this._aiTurnToken + 1) : 1;
+        this._movementResolutionTick = 0;
+
+        try {
+            this.time?.removeAllEvents?.();
+        } catch (e) {}
+        try {
+            this.tweens?.killAll?.();
+        } catch (e) {}
+
         // stop any in-flight drag immediately
         try {
             if (this._draggingHolder) {

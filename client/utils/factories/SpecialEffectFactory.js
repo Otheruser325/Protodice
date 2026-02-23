@@ -694,13 +694,6 @@ export default class SpecialEffectFactory {
                     if (DEBUG_MODE) console.warn('[DeathEffect] perform failed', e);
                 }
             }
-            if (effect.Type === 'Revive') {
-                try {
-                    SpecialEffectFactory.reviveUnit(unit, scene);
-                } catch (e) {
-                    if (DEBUG_MODE) console.warn('[Revive] perform failed', e);
-                }
-            }
         });
         
         // Full recalculation ensures monsters don't retain boosts from dead amplifiers
@@ -1787,33 +1780,28 @@ export default class SpecialEffectFactory {
         if (!revive) return false;
 
         // Initialize revive count if not set
-        unit._reviveCount = unit._reviveCount || 0;
+        unit._reviveCount = Number.isFinite(unit._reviveCount) ? Number(unit._reviveCount) : 0;
         const maxRevives = (revive.MaxRevives !== undefined) ? Number(revive.MaxRevives) : 1;
         
-        // Check revive count BEFORE attempting - if already at max, don't even try
+        // Check successful revive count BEFORE attempting - if already at max, don't even try
         if (unit._reviveCount >= maxRevives) {
             if (DEBUG_MODE) console.log('[Revive] max revives reached', unit.typeName, unit._reviveCount, '>=', maxRevives);
+            unit._reviveExhausted = true;
             return false;
         }
 
-        // Check chance BEFORE incrementing count
+        // Check chance. Failed chance does not consume a revive charge.
         const chance = (revive.ReviveChance !== undefined) ? Number(revive.ReviveChance) : 1.0;
         const roll = Math.random();
         if (roll > chance) {
-            // FAILED: increment count for failed attempt
-            unit._reviveCount++;
-            if (DEBUG_MODE && unit._reviveCount === 1) console.log('[Revive] chance failed (stopping logs)', unit.typeName, 'roll=', roll, 'chance=', chance, 'count=', unit._reviveCount, '/', maxRevives);
-            
-            // If this was the last allowed attempt and it failed, ensure unit is cleaned up
-            if (unit._reviveCount >= maxRevives) {
-                if (DEBUG_MODE) console.log('[Revive] final attempt failed, marking for cleanup', unit.typeName);
-                unit._reviveExhausted = true;
-            }
+            unit._reviveFailedAttempts = Number.isFinite(unit._reviveFailedAttempts) ? (unit._reviveFailedAttempts + 1) : 1;
+            if (DEBUG_MODE) console.log('[Revive] chance failed', unit.typeName, 'roll=', roll, 'chance=', chance, 'used=', unit._reviveCount, '/', maxRevives);
             return false;
         }
 
         // SUCCESS: increment revive usage
         unit._reviveCount++;
+        unit._reviveExhausted = false;
         if (DEBUG_MODE) console.log('[Revive] chance succeeded', unit.typeName, 'roll=', roll, 'chance=', chance, 'count=', unit._reviveCount, '/', maxRevives);
 
         // Save original base stats ONCE on first revive attempt (successful or not)
@@ -2064,6 +2052,11 @@ export default class SpecialEffectFactory {
         } catch (e) {}
         try {
             delete unit._pendingRemoval;
+            delete unit._deathLifecycleHandled;
+            delete unit._fullyRemoved;
+            delete unit._deathSoundPlayed;
+            delete unit._cleanupInProgress;
+            delete unit._defeatCounted;
         } catch (e) {}
 
         // Clean up any existing UI bars on the revived unit to prevent duplicates
@@ -2484,7 +2477,11 @@ export default class SpecialEffectFactory {
             }
         }
 
-        const range = effect.Range || healer.range || 3;
+        const effectRangeRaw = effect?.Range;
+        const hasEffectRange = effectRangeRaw !== undefined && effectRangeRaw !== null && Number.isFinite(Number(effectRangeRaw));
+        const healerBaseRangeRaw = (healer?.range !== undefined && healer?.range !== null) ? healer.range : healer?.Range;
+        const healerBaseRange = Number.isFinite(Number(healerBaseRangeRaw)) ? Number(healerBaseRangeRaw) : 3;
+        const range = Math.max(1, hasEffectRange ? Number(effectRangeRaw) : healerBaseRange);
         const healMult = Number(effect.HealMult || 1.0);
         const baseHeal = effect.HealAmount || healer.damage || 6;
         const finalHeal = Math.round(baseHeal * healMult);
@@ -2543,7 +2540,10 @@ export default class SpecialEffectFactory {
 
         // Sort by targeting mode (default to 'First' - closest)
         // When CanTargetAdjacentLanes, always prioritize: Centre > Bottom > Top
-        const targetingMode = effect.TargetingMode || 'First';
+        const effectTargetingModeRaw = (typeof effect?.TargetingMode === 'string') ? effect.TargetingMode.trim() : '';
+        const healerTargetingModeRaw = (typeof healer?.targetingMode === 'string') ? healer.targetingMode.trim() :
+            ((typeof healer?.TargetingMode === 'string') ? healer.TargetingMode.trim() : '');
+        const targetingMode = effectTargetingModeRaw || healerTargetingModeRaw || 'First';
         const healerRow = healer.position.row;
         let target;
         switch (targetingMode) {

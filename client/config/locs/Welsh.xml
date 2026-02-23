@@ -229,6 +229,8 @@ Neu orlefwch y lonydd i dorri'r amddiffynfeydd.</T>
       <T id="CONFIG_ROWS" l="0">Rhesi: {0}</T>
       <T id="CONFIG_COLS" l="0">Colofnau: {0}</T>
       <T id="CONFIG_START_GAME" l="0">Dechrau</T>
+
+      <T id="CONFIG_LOADOUT_REQUIRED" l="0">Cwblhewch bob llwyth (Amddiffynfeydd/Anghenfilod Arferol/Proto) cyn dechrau.</T>
       <T id="CHALLENGE_DESC_FALLBACK" l="0">Her description</T>
       <T id="CHALLENGE_REWARD_LINE" l="0">Gwobr: +{0} Tocynnau</T>
       <T id="CHALLENGE_SIDES_LINE" l="0">Chi: {0} | Gwrthwynebydd: {1} ({2})</T>
@@ -282,6 +284,18 @@ Neu orlefwch y lonydd i dorri'r amddiffynfeydd.</T>
       <T id="LOADOUT_SLOT" l="0">{0}.</T>
       <T id="LOADOUT_AVAILABLE" l="0">Unedau ar gael</T>
       <T id="LOADOUT_SHOP" l="0">Siop</T>
+
+      <T id="LOADOUT_SHUFFLE" l="0">Cymysgu</T>
+
+      <T id="LOADOUT_SHUFFLE_LOCKED" l="0">Cymysgu (Angen 5)</T>
+
+      <T id="LOADOUT_SHUFFLE_NEED5" l="0">Mae angen o leiaf 5 uned wedi&#39;u datgloi yn y categori hwn i gymysgu.</T>
+
+      <T id="LOADOUT_SHUFFLED" l="0">Llwyth wedi&#39;i gymysgu!</T>
+
+      <T id="LOADOUT_READY" l="0">Mae pob llwyth yn barod</T>
+
+      <T id="LOADOUT_INCOMPLETE" l="0">Anghyflawn: {0}</T>
       <T id="LOADOUT_DEV" l="0">DEV</T>
       <T id="LOADOUT_CLASS" l="0">Dosbarth</T>
       <T id="LOADOUT_PLACEMENT" l="0">Lleoliad</T>
@@ -356,6 +370,8 @@ Neu orlefwch y lonydd i dorri'r amddiffynfeydd.</T>
       <T id="HISTORY_ROLLED" l="0">{0} rolio: {1}</T>
       <T id="HISTORY_UNIT_DEFEATED" l="0">Trechwyd {0}</T>
       <T id="HISTORY_UNIT_REMOVED" l="0">Tynnwyd {0}</T>
+
+      <T id="HISTORY_UNIT_EXPIRED" l="0">{0} wedi darfod</T>
       <T id="TOOLTIP_TURN" l="0">tro</T>
       <T id="TOOLTIP_TURNS" l="0">troeon</T>
       <T id="TOOLTIP_LIFESPAN_LINE" l="0">Hyd oes: {0} {1}</T>

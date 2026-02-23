@@ -3,6 +3,7 @@ import GlobalAudio from '../utils/AudioManager.js';
 import GlobalBackground from '../utils/BackgroundManager.js';
 import ErrorHandler from '../utils/ErrorManager.js';
 import GlobalLocalization from '../utils/LocalizationManager.js';
+import { GAME_VERSION } from '../utils/VersionManager.js';
 
 export default class MenuScene extends Phaser.Scene {
   constructor() {
@@ -93,13 +94,11 @@ export default class MenuScene extends Phaser.Scene {
     });
 
     const footerY = this.cameras.main.height - 40;
-    const musicText = this.add.text(centerX, footerY, t('UI_MUSIC_ON', 'MUSIC: ON'), { fontSize: 18, fontFamily: '"Press Start 2P", cursive', color: '#cccccc' }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-    musicText.on('pointerdown', () => {
-      if (!GlobalAudio || typeof GlobalAudio.toggleMusic !== 'function') return;
-      GlobalAudio.toggleMusic(this);
-      musicText.setText(GlobalAudio.isMusicOn ? t('UI_MUSIC_ON', 'MUSIC: ON') : t('UI_MUSIC_OFF', 'MUSIC: OFF'));
-      GlobalAudio.playButton(this);
-    });
+    this.add.text(centerX, footerY, `Version ${GAME_VERSION}`, {
+      fontSize: 18,
+      fontFamily: '"Press Start 2P", cursive',
+      color: '#cccccc'
+    }).setOrigin(0.5);
 
     // Start / resume music safely
     if (GlobalAudio && typeof GlobalAudio.playMusic === 'function') GlobalAudio.playMusic(this);

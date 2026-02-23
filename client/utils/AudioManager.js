@@ -1,34 +1,32 @@
 import GlobalSettings from './SettingsManager.js';
 
 class AudioManager {
-  constructor() {
-    this.music = null,
-    this.currentTrack = 0,
-    this.tracks = ['prototype_defenders', 'crossing_the_gap', 'defend_the_breach'],
-    this.jukeboxEnabled = false
-    this._onCompleteRef = null;
-    this._lastTrackKey = null;
-    this._attachedSoundManager = null;
+  static music = null;
+  static currentTrack = 0;
+  static tracks = ['prototype_defenders', 'crossing_the_gap', 'defend_the_breach'];
+  static jukeboxEnabled = false;
+  static _onCompleteRef = null;
+  static _lastTrackKey = null;
+  static _attachedSoundManager = null;
 
-    // Autoplay fallback handlers
-    this._onUserGestureAutoplay = null;
-    this._onVisibilityChange = null;
-  }
+  // Autoplay fallback handlers
+  static _onUserGestureAutoplay = null;
+  static _onVisibilityChange = null;
 
   // Backwards-compatible method — now uses Settings manager
-  getSettings(scene) {
+  static getSettings(scene) {
     return GlobalSettings.get(scene);
   }
 
-  saveSettings(scene) {
+  static saveSettings(scene) {
     GlobalSettings.save(scene);
   }
 
-  _settingsOrDefault(scene) {
+  static _settingsOrDefault(scene) {
     return GlobalSettings.get(scene) ?? { music: true, trackIndex: 0, shuffleTrack: false };
   }
 
-  _cleanupMusic() {
+  static _cleanupMusic() {
     if (!this.music) return;
     try {
       if (this.music.off && this._onCompleteRef) {
@@ -45,7 +43,7 @@ class AudioManager {
   }
 
   // Try to attach visibility handler so we can resume AudioContext on visibilitychange
-  _attachVisibilityHandler() {
+  static _attachVisibilityHandler() {
     if (this._onVisibilityChange) return;
     this._onVisibilityChange = () => {
       try {
@@ -64,13 +62,13 @@ class AudioManager {
     document.addEventListener('visibilitychange', this._onVisibilityChange);
   }
 
-  _detachVisibilityHandler() {
+  static _detachVisibilityHandler() {
     if (!this._onVisibilityChange) return;
     document.removeEventListener('visibilitychange', this._onVisibilityChange);
     this._onVisibilityChange = null;
   }
 
-  _attachUserGestureForAutoplay(scene) {
+  static _attachUserGestureForAutoplay(scene) {
     if (this._onUserGestureAutoplay) return;
 
     // handler references for removal
@@ -93,7 +91,7 @@ class AudioManager {
     });
   }
 
-  _removeUserGestureListener() {
+  static _removeUserGestureListener() {
     if (!this._onUserGestureAutoplay) return;
     ['pointerdown', 'touchstart', 'keydown'].forEach(evt => {
       try { window.removeEventListener(evt, this._onUserGestureAutoplay); } catch (e) {}
@@ -102,7 +100,7 @@ class AudioManager {
   }
 
   // ------------ CORE MUSIC PLAYBACK ------------
-  playMusic(scene) {
+  static playMusic(scene) {
     if (!scene || typeof scene.sound === 'undefined') {
       console.warn('[AudioManager] playMusic called without a valid scene; skipping playback.');
       return;
@@ -202,7 +200,7 @@ class AudioManager {
 
   // manual selection of a specific track index — respects shuffle setting:
   // if shuffleTrack enabled, selecting a track will set trackIndex but NOT force loop.
-  setTrack(scene, index) {
+  static setTrack(scene, index) {
     const trackCount = this.tracks.length;
     const clamped = ((index % trackCount) + trackCount) % trackCount;
     GlobalSettings.set(scene, 'trackIndex', clamped);
@@ -218,7 +216,7 @@ class AudioManager {
   }
 
   // If you want to go back to auto-cycling (advance tracks on complete) call this
-  disableJukebox(scene) {
+  static disableJukebox(scene) {
     this.jukeboxEnabled = false;
     if (scene) GlobalSettings.set(scene, 'trackIndex', this.currentTrack);
     this._cleanupMusic();
@@ -226,7 +224,7 @@ class AudioManager {
   }
 
   // nextTrack(auto) - if auto true, called from 'complete' event; shuffle setting changes behaviour
-  nextTrack(scene, auto = false) {
+  static nextTrack(scene, auto = false) {
     const settings = this._settingsOrDefault(scene);
 
     // If auto-called and shuffle is OFF (looping), then do nothing (we want continuous loop)
@@ -261,21 +259,21 @@ class AudioManager {
     this.playMusic(scene);
   }
 
-  toggleMusic(scene) {
+  static toggleMusic(scene) {
     const current = GlobalSettings.toggle(scene, 'music');
     GlobalSettings.save(scene);
     if (current) this.playMusic(scene); else this.stopMusic();
     return current;
   }
 
-  stopMusic() {
+  static stopMusic() {
     this._cleanupMusic();
     this._removeUserGestureListener();
     this._detachVisibilityHandler();
   }
 
   // ------------ SFX ------------
-  playSfx(scene, key, options = null) {
+  static playSfx(scene, key, options = null) {
     if (!scene || !scene.sound || !key) return;
     const settings = GlobalSettings.get(scene) || {};
     if (settings.audio === false) return;
@@ -288,15 +286,15 @@ class AudioManager {
     try { scene.sound.play(key, opts); } catch (e) {}
   }
 
-  playButton(scene) {
+  static playButton(scene) {
     this.playSfx(scene, 'button', 0.5);
   }
 
-  playDice(scene) {
+  static playDice(scene) {
     this.playSfx(scene, 'dice', 0.5);
   }
 
-  comboSFX(scene, comboName) {
+  static comboSFX(scene, comboName) {
     if (!scene || !scene.sound) return;
 
     const key = {
@@ -315,5 +313,5 @@ class AudioManager {
   }
 };
 
-const GlobalAudio = new AudioManager();
+const GlobalAudio = AudioManager;
 export default GlobalAudio;

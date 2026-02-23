@@ -229,6 +229,8 @@ O abruma los carriles para romper las defensas.</T>
       <T id="CONFIG_ROWS" l="0">Filas: {0}</T>
       <T id="CONFIG_COLS" l="0">Columnas: {0}</T>
       <T id="CONFIG_START_GAME" l="0">Comenzar</T>
+
+      <T id="CONFIG_LOADOUT_REQUIRED" l="0">Completa todos los equipamientos (Defensa/Monstruos Normal/Proto) antes de empezar.</T>
       <T id="CHALLENGE_DESC_FALLBACK" l="0">Descripci&#243;n de desaf&#237;o</T>
       <T id="CHALLENGE_REWARD_LINE" l="0">Recompensa: +{0} Fichas</T>
       <T id="CHALLENGE_SIDES_LINE" l="0">T&#250;: {0} | Rival: {1} ({2})</T>
@@ -282,6 +284,18 @@ O abruma los carriles para romper las defensas.</T>
       <T id="LOADOUT_SLOT" l="0">{0}.</T>
       <T id="LOADOUT_AVAILABLE" l="0">Unidades disponibles</T>
       <T id="LOADOUT_SHOP" l="0">Tienda</T>
+
+      <T id="LOADOUT_SHUFFLE" l="0">Barajar</T>
+
+      <T id="LOADOUT_SHUFFLE_LOCKED" l="0">Barajar (Necesita 5)</T>
+
+      <T id="LOADOUT_SHUFFLE_NEED5" l="0">Necesitas al menos 5 unidades desbloqueadas en esta categoria para barajar.</T>
+
+      <T id="LOADOUT_SHUFFLED" l="0">Equipamiento barajado!</T>
+
+      <T id="LOADOUT_READY" l="0">Todos los equipamientos listos</T>
+
+      <T id="LOADOUT_INCOMPLETE" l="0">Incompleto: {0}</T>
       <T id="LOADOUT_DEV" l="0">DEV</T>
       <T id="LOADOUT_CLASS" l="0">Clase</T>
       <T id="LOADOUT_PLACEMENT" l="0">Posici&#243;n</T>
@@ -355,6 +369,8 @@ O abruma los carriles para romper las defensas.</T>
       <T id="HISTORY_ROLLED" l="0">{0} lanz&#243;: {1}</T>
       <T id="HISTORY_UNIT_DEFEATED" l="0">{0} fue derrotado</T>
       <T id="HISTORY_UNIT_REMOVED" l="0">{0} fue retirado</T>
+
+      <T id="HISTORY_UNIT_EXPIRED" l="0">{0} expiro</T>
       <T id="TOOLTIP_TURN" l="0">turno</T>
       <T id="TOOLTIP_TURNS" l="0">turnos</T>
       <T id="TOOLTIP_LIFESPAN_LINE" l="0">Vida util: {0} {1}</T>

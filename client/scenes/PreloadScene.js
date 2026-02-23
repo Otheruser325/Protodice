@@ -119,6 +119,9 @@ export default class PreloadScene extends Phaser.Scene {
         this.load.xml('loc:Italian', 'config/locs/Italian.xml');
         this.load.xml('loc:Portuguese', 'config/locs/Portuguese.xml');
         this.load.xml('loc:Welsh', 'config/locs/Welsh.xml');
+        this.load.xml('vfx:explosion', 'assets/sprites/vfx/explosion.xml');
+        this.load.xml('sheet:dice', 'assets/sprites/dice/dice.xml');
+        this.load.xml('sheet:prototype_dice', 'assets/sprites/dice/prototype_dice.xml');
 
         // Music tracks
         this.load.audio('crossing_the_gap', 'assets/music/crossing_the_gap.mp3');
@@ -211,19 +214,15 @@ export default class PreloadScene extends Phaser.Scene {
         this.load.image('playerIcon', 'assets/ui/player.png');
         this.load.image('botIcon', 'assets/ui/robot.png');
 
-        // Load defence definitions
-        const defenceFiles = ['AcidShooter', 'Ballista', 'Barricade', 'BoomCannon', 'Cannon', 'CryoFan', 'DamageAmplifier', 'DestroyTower', 'Flamethrower', 'ForceField', 'Landmine', 'LazorBeam', 'MachineGun', 'MicroSentry', 'Microwavr', 'Mortar', 'Multishot', 'RadialLauncher', 'RocketLauncher', 'ShockBlaster', 'ShockLauncher', 'Shredder', 'SIMO', 'SniperTower'];
-        defenceFiles.forEach(f => this.load.json(f + 'Defence', 'assets/gamedata/DefenceDefinitions/' + f + '.defence'));
-
-        // Load monster definitions
-        const monsterFiles = ['Archer', 'Bat', 'Bomber', 'Catapult', 'Cupid', 'Demon', 'ElectroMage', 'FireImp', 'Ghost', 'Goblin', 'Golem', 'Harpy', 'IceLizard', 'Knight', 'Mech', 'Necromancer', 'PoisonWard', 'Orc', 'Skeleton', 'Surgeon', 'Tank', 'Thrower', 'Troll', 'Zombie'];
-        monsterFiles.forEach(f => this.load.json(f + 'Monster', 'assets/gamedata/MonsterDefinitions/' + f + '.monster'));
-
         // Load defence sprites
-        defenceFiles.forEach(f => this.load.image(f.toLowerCase(), 'assets/sprites/defences/' + f.toLowerCase() + '.png'));
+        this._getDefenceSpriteFiles().forEach(f => {
+            this.load.image(f.toLowerCase(), 'assets/sprites/defences/' + f.toLowerCase() + '.png');
+        });
 
         // Load monster sprites
-        monsterFiles.forEach(f => this.load.image(f.toLowerCase(), 'assets/sprites/monsters/' + f.toLowerCase() + '.png'));
+        this._getMonsterSpriteFiles().forEach(f => {
+            this.load.image(f.toLowerCase(), 'assets/sprites/monsters/' + f.toLowerCase() + '.png');
+        });
     }
 
     async create() {
@@ -251,22 +250,14 @@ export default class PreloadScene extends Phaser.Scene {
         this._registerDiceFrames();
         this._registerExplosionFrames();
 
-        // Set factory data
-        const defenceFiles = ['AcidShooter', 'Ballista', 'Barricade', 'BoomCannon', 'Cannon', 'CryoFan', 'DamageAmplifier', 'DestroyTower', 'Flamethrower', 'ForceField', 'Landmine', 'LazorBeam', 'MachineGun', 'MicroSentry', 'Microwavr', 'Mortar', 'Multishot', 'RadialLauncher', 'RocketLauncher', 'ShockBlaster', 'ShockLauncher', 'Shredder', 'SIMO', 'SniperTower'];
-        DefenceFactory.defenceData = {};
-        defenceFiles.forEach(f => {
-            const data = this.cache.json.get(f + 'Defence');
-            DefenceFactory.validateData(data);
-            DefenceFactory.defenceData[f] = data;
-        });
+        // Load gameplay definitions through factories (validated on caching)
+        try {
+            await DefenceFactory.loadData();
+        } catch (e) {}
 
-        const monsterFiles = ['Archer', 'Bat', 'Bomber', 'Catapult', 'Cupid', 'Demon', 'ElectroMage', 'FireImp', 'Ghost', 'Goblin', 'Golem', 'Harpy', 'IceLizard', 'Knight', 'Mech', 'Necromancer', 'PoisonWard', 'Orc', 'Skeleton', 'Surgeon', 'Tank', 'Thrower', 'Troll', 'Zombie'];
-        MonsterFactory.monsterData = {};
-        monsterFiles.forEach(f => {
-            const data = this.cache.json.get(f + 'Monster');
-            MonsterFactory.validateData(data);
-            MonsterFactory.monsterData[f] = data;
-        });
+        try {
+            await MonsterFactory.loadData();
+        } catch (e) {}
 
         try {
             await PuddleFactory.loadData();
@@ -295,7 +286,7 @@ export default class PreloadScene extends Phaser.Scene {
     }
 
     _registerDiceFrames() {
-        const frames = [
+        const fallbackFrames = [
             { key: '1', x: 47, y: 30, w: 97, h: 105 },
             { key: '2', x: 199, y: 30, w: 100, h: 105 },
             { key: '3', x: 354, y: 30, w: 97, h: 105 },
@@ -304,10 +295,22 @@ export default class PreloadScene extends Phaser.Scene {
             { key: '6', x: 354, y: 153, w: 97, h: 102 }
         ];
 
-        const register = (key) => {
-            if (!this.textures || !this.textures.exists(key)) return;
-            const tex = this.textures.get(key);
+        const register = (textureKey, xmlKey, animName) => {
+            if (!this.textures || !this.textures.exists(textureKey)) return;
+            const tex = this.textures.get(textureKey);
             if (tex._diceFramesRegistered) return;
+
+            const src = tex.source && tex.source[0];
+            const texWidth = Number(src?.width || 0);
+            const texHeight = Number(src?.height || 0);
+            const frames = this._getAnimationCellsFromXml(
+                xmlKey,
+                animName,
+                texWidth,
+                texHeight,
+                fallbackFrames
+            );
+
             frames.forEach((frame) => {
                 try {
                     tex.add(frame.key, 0, frame.x, frame.y, frame.w, frame.h);
@@ -318,8 +321,27 @@ export default class PreloadScene extends Phaser.Scene {
             tex._diceFramesRegistered = true;
         };
 
-        register('dice_sheet');
-        register('prototype_dice_sheet');
+        register('dice_sheet', 'sheet:dice', 'dice');
+        register('prototype_dice_sheet', 'sheet:prototype_dice', 'prototype_dice');
+    }
+
+    _getDefenceSpriteFiles() {
+        return [
+            'AcidShooter', 'Ballista', 'Barricade', 'BoomCannon', 'Cannon', 'CryoFan',
+            'DamageAmplifier', 'DestroyTower', 'Flamethrower', 'ForceField', 'Landmine',
+            'LazorBeam', 'MachineGun', 'MicroSentry', 'Microwavr', 'Mortar', 'Multishot',
+            'RadialLauncher', 'RocketLauncher', 'ShockBlaster', 'ShockLauncher', 'Shredder',
+            'SIMO', 'SniperTower'
+        ];
+    }
+
+    _getMonsterSpriteFiles() {
+        return [
+            'Archer', 'Bat', 'Bomber', 'Catapult', 'Cupid', 'Demon', 'ElectroMage',
+            'FireImp', 'Ghost', 'Goblin', 'Golem', 'Harpy', 'IceLizard', 'Knight',
+            'Mech', 'Necromancer', 'PoisonWard', 'Orc', 'Skeleton', 'Surgeon', 'Tank',
+            'Thrower', 'Troll', 'Zombie'
+        ];
     }
 
     _registerExplosionFrames() {
@@ -331,31 +353,24 @@ export default class PreloadScene extends Phaser.Scene {
         const source = tex.source && tex.source[0];
         if (!source || !source.width || !source.height) return;
 
-        const width = source.width;
-        const height = source.height;
+        const width = Number(source.width || 0);
+        const height = Number(source.height || 0);
 
-        // If the sheet is a clean horizontal strip of square-ish frames, slice it.
-        // Otherwise, register a single full-frame for safe usage.
-        let frameCount = 1;
-        if (height > 0 && width % height === 0) {
-            const candidate = Math.floor(width / height);
-            if (candidate >= 2 && candidate <= 16) frameCount = candidate;
-        }
-
-        const frameWidth = Math.floor(width / frameCount);
-        for (let i = 0; i < frameCount; i++) {
+        const frames = this._getExplosionFrameRects(width, height);
+        for (let i = 0; i < frames.length; i++) {
+            const f = frames[i];
             try {
-                tex.add(`explosion_${i}`, 0, i * frameWidth, 0, frameWidth, height);
+                tex.add(`explosion_${i}`, 0, f.x, f.y, f.w, f.h);
             } catch (e) {
                 /* ignore duplicate frame errors */
             }
         }
 
-        if (frameCount > 1 && this.anims && !this.anims.exists('explosion')) {
+        if (frames.length > 1 && this.anims && !this.anims.exists('explosion')) {
             try {
                 this.anims.create({
                     key: 'explosion',
-                    frames: Array.from({ length: frameCount }, (_, i) => ({ key, frame: `explosion_${i}` })),
+                    frames: Array.from({ length: frames.length }, (_, i) => ({ key, frame: `explosion_${i}` })),
                     frameRate: 12,
                     repeat: 0
                 });
@@ -363,5 +378,87 @@ export default class PreloadScene extends Phaser.Scene {
         }
 
         tex._explosionFramesRegistered = true;
+    }
+
+    _getExplosionFrameRects(texWidth, texHeight) {
+        const fallback = [{ key: 'explosion_0', x: 0, y: 0, w: texWidth, h: texHeight }];
+        if (texWidth <= 0 || texHeight <= 0) return fallback;
+
+        const explicit = this._getAnimationCellsFromXml('vfx:explosion', 'explosion', texWidth, texHeight, []);
+        if (explicit.length >= 2) {
+            return explicit.map(f => ({ x: f.x, y: f.y, w: f.w, h: f.h }));
+        }
+
+        // Single-cell XML can still describe a horizontal strip sheet.
+        const single = this._getAnimationCellsFromXml('vfx:explosion', 'explosion', texWidth, texHeight, []);
+        if (single.length === 1) {
+            const frameW = Number(single[0].w || 0);
+            const frameH = Number(single[0].h || 0);
+            if (frameW > 0 && frameH > 0 && frameH <= texHeight) {
+                const count = Math.floor(texWidth / frameW);
+                if (count >= 2) {
+                    const derived = [];
+                    for (let i = 0; i < count; i++) {
+                        const x = i * frameW;
+                        if (x + frameW > texWidth) break;
+                        derived.push({ x, y: 0, w: frameW, h: frameH });
+                    }
+                    if (derived.length >= 2) return derived;
+                }
+            }
+        }
+
+        return fallback;
+    }
+
+    _getAnimationCellsFromXml(xmlKey, animationName, texWidth, texHeight, fallbackFrames = []) {
+        const fallback = Array.isArray(fallbackFrames) ? fallbackFrames : [];
+        const xml = this.cache?.xml?.get(xmlKey);
+        if (!xml) return fallback;
+
+        const toNum = (node, key, def = 0) => {
+            if (!node || typeof node.getAttribute !== 'function') return def;
+            const raw = node.getAttribute(key);
+            const n = Number(raw);
+            return Number.isFinite(n) ? n : def;
+        };
+
+        try {
+            const animNodes = xml.getElementsByTagName('Animation');
+            let selected = null;
+            for (let i = 0; i < animNodes.length; i++) {
+                const node = animNodes[i];
+                const n = String(node.getAttribute?.('name') || '').toLowerCase();
+                if (n === String(animationName || '').toLowerCase()) {
+                    selected = node;
+                    break;
+                }
+            }
+            if (!selected) return fallback;
+
+            const cellNodes = selected.getElementsByTagName('Cell');
+            if (!cellNodes || cellNodes.length === 0) return fallback;
+
+            const frames = [];
+            for (let i = 0; i < cellNodes.length; i++) {
+                const cell = cellNodes[i];
+                const x = toNum(cell, 'x', 0);
+                const y = toNum(cell, 'y', 0);
+                const w = toNum(cell, 'w', toNum(cell, 'aw', texWidth));
+                const h = toNum(cell, 'h', toNum(cell, 'ah', texHeight));
+                const key = String(cell.getAttribute?.('name') || (i + 1));
+
+                if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0) continue;
+                if (x < 0 || y < 0) continue;
+                if (Number.isFinite(texWidth) && texWidth > 0 && x + w > texWidth) continue;
+                if (Number.isFinite(texHeight) && texHeight > 0 && y + h > texHeight) continue;
+
+                frames.push({ key, x, y, w, h });
+            }
+
+            return frames.length > 0 ? frames : fallback;
+        } catch (e) {
+            return fallback;
+        }
     }
 }

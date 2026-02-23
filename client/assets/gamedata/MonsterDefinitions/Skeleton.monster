@@ -2,7 +2,7 @@
     "TypeName": "Skeleton",
 	"FullName": "Skeleton",
 	"Rarity": "Common",
-	"Health": 25,
+	"Health": 27.5,
     "Damage": 10,
     "Range": 1,
 	"Speed": 1,

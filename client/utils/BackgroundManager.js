@@ -1,15 +1,13 @@
 class BackgroundManager {
-  constructor() {
-    this._scene = null;
-    this._bg = null;
-    this._opts = {};
-  }
+  static _scene = null;
+  static _bg = null;
+  static _opts = {};
 
   /**
    * Register a scene to attach the global background to.
    * opts = { key: 'bg' (asset key), width, height, padding, tint, useImageIfAvailable (true) }
    */
-  registerScene(scene, opts = {}) {
+  static registerScene(scene, opts = {}) {
     if (!scene || !scene.add) return;
     if (this._scene === scene) return;
 
@@ -96,7 +94,7 @@ class BackgroundManager {
     }
   }
 
-  unregisterScene(scene = null) {
+  static unregisterScene(scene = null) {
     if (scene && this._scene !== scene) return;
     try {
       if (this._bg) {
@@ -111,7 +109,7 @@ class BackgroundManager {
   }
 
   // Backwards compatible
-  createBackgroundPanel(scene, opts = {}) {
+  static createBackgroundPanel(scene, opts = {}) {
     this.registerScene(scene, { ...opts, useImageIfAvailable: !!opts.useImageIfAvailable });
     if (!this._bg) return { outer: null, panel: null };
     if (this._bg.list) {
@@ -124,5 +122,5 @@ class BackgroundManager {
   }
 }
 
-const GlobalBackground = new BackgroundManager();
+const GlobalBackground = BackgroundManager;
 export default GlobalBackground;

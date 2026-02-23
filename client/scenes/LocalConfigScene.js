@@ -1,8 +1,11 @@
+import GlobalAlerts from '../utils/AlertManager.js';
 import GlobalAudio from '../utils/AudioManager.js';
 import GlobalBackground from '../utils/BackgroundManager.js';
 import ErrorHandler from '../utils/ErrorManager.js';
 import ChallengeManager from '../utils/ChallengeManager.js';
 import GlobalLocalization from '../utils/LocalizationManager.js';
+import DefenceFactory from '../utils/factories/DefenceFactory.js';
+import MonsterFactory from '../utils/factories/MonsterFactory.js';
 
 export default class LocalConfigScene extends Phaser.Scene {
     constructor() {
@@ -234,6 +237,15 @@ export default class LocalConfigScene extends Phaser.Scene {
 
         startBtn.on('pointerdown', () => {
             GlobalAudio.playButton(this);
+            if (!this._areLocalLoadoutsReady()) {
+                GlobalAlerts.show(
+                    this,
+                    t('CONFIG_LOADOUT_REQUIRED', 'Corrupt or missing loadouts! Please set up your loadouts before starting the game.'),
+                    'warning'
+                );
+                this.scene.start('LocalLoadoutScene');
+                return;
+            }
             this.scene.start('LocalGameScene', {
                 waves: this.selectedWaves,
                 switchSides: this.switchSides,
@@ -270,5 +282,41 @@ export default class LocalConfigScene extends Phaser.Scene {
             boardRows: this.boardRows,
             boardCols: this.boardCols
         });
+    }
+
+    _areLocalLoadoutsReady() {
+        const defData = DefenceFactory.defenceData || {};
+        const monData = MonsterFactory.monsterData || {};
+
+        const parseLoadout = (key) => {
+            try {
+                const raw = JSON.parse(localStorage.getItem(key) || '[]');
+                return Array.isArray(raw) ? raw : [];
+            } catch (e) {
+                return [];
+            }
+        };
+
+        const isLoadoutValid = (arr, data, isProto) => {
+            if (!Array.isArray(arr) || arr.length < 5) return false;
+            for (let i = 0; i < 5; i++) {
+                const unit = arr[i];
+                if (!unit) return false;
+                const def = data[unit];
+                if (!def) return false;
+                if (!!def.IsProto !== !!isProto) return false;
+            }
+            return true;
+        };
+
+        const defenceNormal = parseLoadout('defenceNormalLoadout');
+        const defenceProto = parseLoadout('defenceProtoLoadout');
+        const monsterNormal = parseLoadout('monsterNormalLoadout');
+        const monsterProto = parseLoadout('monsterProtoLoadout');
+
+        return isLoadoutValid(defenceNormal, defData, false) &&
+            isLoadoutValid(defenceProto, defData, true) &&
+            isLoadoutValid(monsterNormal, monData, false) &&
+            isLoadoutValid(monsterProto, monData, true);
     }
 }

@@ -1,4 +1,4 @@
-import { DEBUG_MODE } from '../DebugManager.js';
+import { DEBUG_MODE, DEV_DEBUG_MODE } from '../DebugManager.js';
 import ErrorHandler from '../ErrorManager.js';
 import GlobalLocalization from '../LocalizationManager.js';
 import BoardFactory from './BoardFactory.js';
@@ -16,6 +16,7 @@ export default class DefenceFactory {
      * @returns {Promise<void>}
      */
     static async loadData() {
+        this.defenceData = {};
         const response = await fetch('assets/gamedata/DefenceDefinitions/manifest.json');
         if (!response.ok) {
             ErrorHandler.logError('Failed to load defence manifest');
@@ -23,10 +24,14 @@ export default class DefenceFactory {
         }
         const manifest = await response.json();
         for (const file of manifest.files) {
+            const isTestFile = /^test/i.test(String(file || ''));
+            if (isTestFile && !DEV_DEBUG_MODE) continue;
             try {
                 const res = await fetch(`assets/gamedata/DefenceDefinitions/${file}`);
                 if (!res.ok) continue;
                 const data = await res.json();
+                const isDevOnly = !!data?.IsDevOnly || /^test/i.test(String(data?.TypeName || ''));
+                if (isDevOnly && !DEV_DEBUG_MODE) continue;
                 this.validateData(data);
                 this.defenceData[data.TypeName] = data;
             } catch (e) {

@@ -1,14 +1,12 @@
 class FontManager {
-  constructor({ perFontTimeout = 1000 } = {}) {
-    this._loaded = new Set();
-    this.perFontTimeout = perFontTimeout;
-  }
+  static _loaded = new Set();
+  static perFontTimeout = 1000;
 
   /**
    * defs: [{ family, url, weight }]
    * options: { timeout } optional per-call override (ms)
    */
-  async init(defs = [], options = {}) {
+  static async init(defs = [], options = {}) {
     if (!Array.isArray(defs) || defs.length === 0) return;
     const timeout = options.timeout ?? this.perFontTimeout;
 
@@ -16,7 +14,7 @@ class FontManager {
     await Promise.all(tasks);
   }
 
-  async ensure(defs = [], options = {}) {
+  static async ensure(defs = [], options = {}) {
     if (!Array.isArray(defs) || defs.length === 0) return;
     try {
       if (typeof document !== 'undefined' && document.fonts && typeof document.fonts.check === 'function') {
@@ -34,12 +32,12 @@ class FontManager {
     await this.init(defs, options);
   }
 
-  isLoaded(family, weight = '400') {
+  static isLoaded(family, weight = '400') {
     return this._loaded.has(`${family}::${weight}`);
   }
 
   // ---------- internals ----------
-  async _loadFont(def = {}, timeoutMs = 1000) {
+  static async _loadFont(def = {}, timeoutMs = 1000) {
     const family = def.family || 'Unknown';
     const weight = String(def.weight || '400');
     const cacheKey = `${family}::${weight}`;
@@ -63,7 +61,7 @@ class FontManager {
     return true;
   }
 
-  _loadWithFontFace(def = {}, timeoutMs = 1000) {
+  static _loadWithFontFace(def = {}, timeoutMs = 1000) {
     return new Promise(resolve => {
       if (typeof FontFace === 'undefined') return resolve(false);
 
@@ -92,7 +90,7 @@ class FontManager {
     });
   }
 
-  _injectCSSFallback(def = {}) {
+  static _injectCSSFallback(def = {}) {
     try {
       const cssFamily = (def.family || 'Unknown').replace(/["']/g, '');
       const weight = def.weight || '400';
@@ -116,7 +114,7 @@ class FontManager {
     }
   }
 
-  _waitForDocumentFontsLoad(def = {}, timeoutMs = 1000) {
+  static _waitForDocumentFontsLoad(def = {}, timeoutMs = 1000) {
     return new Promise(resolve => {
       try {
         if (!document.fonts || typeof document.fonts.load !== 'function') {
@@ -140,5 +138,5 @@ class FontManager {
   }
 }
 
-export const GlobalFonts = new FontManager({ perFontTimeout: 1000 });
+export const GlobalFonts = FontManager;
 export default GlobalFonts;

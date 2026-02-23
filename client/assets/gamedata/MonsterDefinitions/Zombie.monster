@@ -3,10 +3,10 @@
 	"FullName": "Zombie",
 	"Rarity": "Uncommon",
 	"Health": 25,
-    "Damage": 14,
+    "Damage": 6,
     "Range": 1,
 	"Speed": 1,
-	"Ammo": 1,
+	"Ammo": 2,
 	"ReloadDelay": 2,
     "TargetingMode": "First",
 	"ProjectileMotion": "None",
@@ -18,7 +18,7 @@
 		"ReviveChance": 0.5,
 		"HealthMult": 0.5,
 		"DamageMult": 0.5,
-		"MaxRevives": 2
+		"MaxRevives": 3
 	  }
 	],
     "StatusEffects": [],

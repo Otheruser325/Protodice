@@ -1,4 +1,31 @@
+import GlobalLocalization from './LocalizationManager.js';
+
 const STORAGE_KEY = 'protodice_achievements';
+
+export const ACHIEVEMENT_DEFS = [
+  { key: 'firstPlay', titleKey: 'ACH_FIRSTPLAY_TITLE', descKey: 'ACH_FIRSTPLAY_DESC', title: "I'm New to This", desc: 'Play Protodice for the first time.' },
+  { key: 'waves100', titleKey: 'ACH_WAVES_100_TITLE', descKey: 'ACH_WAVES_100_DESC', title: 'Warm-Up Waves', desc: 'Progress 100 waves total.' },
+  { key: 'waves500', titleKey: 'ACH_WAVES_500_TITLE', descKey: 'ACH_WAVES_500_DESC', title: 'Battle-Seasoned', desc: 'Progress 500 waves total.' },
+  { key: 'waves2500', titleKey: 'ACH_WAVES_2500_TITLE', descKey: 'ACH_WAVES_2500_DESC', title: 'Endless War', desc: 'Progress 2,500 waves total.' },
+  { key: 'time1h', titleKey: 'ACH_TIME_1H_TITLE', descKey: 'ACH_TIME_1H_DESC', title: 'Just One More', desc: 'Play Protodice for 1 hour total.' },
+  { key: 'time12h', titleKey: 'ACH_TIME_12H_TITLE', descKey: 'ACH_TIME_12H_DESC', title: 'All In', desc: 'Play Protodice for 12 hours total.' },
+  { key: 'time24h', titleKey: 'ACH_TIME_24H_TITLE', descKey: 'ACH_TIME_24H_DESC', title: 'Diceaholic', desc: 'Play Protodice for 24 hours total.' },
+  { key: 'wins1', titleKey: 'ACH_WINS_1_TITLE', descKey: 'ACH_WINS_1_DESC', title: 'First Victory', desc: 'Win your first match.' },
+  { key: 'wins10', titleKey: 'ACH_WINS_10_TITLE', descKey: 'ACH_WINS_10_DESC', title: 'Veteran Commander', desc: 'Win 10 matches.' },
+  { key: 'wins50', titleKey: 'ACH_WINS_50_TITLE', descKey: 'ACH_WINS_50_DESC', title: 'Specialised Commander', desc: 'Win 50 matches.' },
+  { key: 'kills50', titleKey: 'ACH_KILLS_50_TITLE', descKey: 'ACH_KILLS_50_DESC', title: 'Enemy Down', desc: 'Defeat 50 enemies (monsters as defender / defences as attacker).' },
+  { key: 'kills250', titleKey: 'ACH_KILLS_250_TITLE', descKey: 'ACH_KILLS_250_DESC', title: 'No More Messing Around', desc: 'Defeat 250 enemies.' },
+  { key: 'kills1000', titleKey: 'ACH_KILLS_1000_TITLE', descKey: 'ACH_KILLS_1000_DESC', title: 'Monster Slayer', desc: 'Defeat 1,000 enemies.' },
+  { key: 'daily1', titleKey: 'ACH_DAILY_1_TITLE', descKey: 'ACH_DAILY_1_DESC', title: 'Challenger', desc: 'Beat a daily challenge.' },
+  { key: 'daily10', titleKey: 'ACH_DAILY_10_TITLE', descKey: 'ACH_DAILY_10_DESC', title: 'Problem Solver', desc: 'Beat 10 daily challenges.' },
+  { key: 'ownEpic', titleKey: 'ACH_OWN_EPIC_TITLE', descKey: 'ACH_OWN_EPIC_DESC', title: 'Augmented', desc: 'Obtain an Epic unit.' },
+  { key: 'ownLegendary', titleKey: 'ACH_OWN_LEGENDARY_TITLE', descKey: 'ACH_OWN_LEGENDARY_DESC', title: 'In Our Darkest Hour...', desc: 'Obtain a Legendary unit.' },
+  { key: 'hellscape', titleKey: 'ACH_HELLSCAPE_TITLE', descKey: 'ACH_HELLSCAPE_DESC', title: 'Hellscape', desc: "Defeat Deucifer in Deucifer's Pit." },
+  { key: 'tickler', titleKey: 'ACH_TICKLER_TITLE', descKey: 'ACH_TICKLER_DESC', title: 'The Tickler', desc: 'Deal over 100 fire/poison damage in a match.' },
+  { key: 'stunWave', titleKey: 'ACH_STUN_WAVE_TITLE', descKey: 'ACH_STUN_WAVE_DESC', title: "Who's Stunning Now?", desc: 'Stun or freeze 5 enemies in one wave.' }
+];
+
+const DEFAULT_UNLOCKED = Object.fromEntries(ACHIEVEMENT_DEFS.map((def) => [def.key, false]));
 
 const DEFAULTS = {
   totals: {
@@ -11,26 +38,7 @@ const DEFAULTS = {
     dailyChallengesCompleted: 0
   },
   unlocked: {
-    firstPlay: false,
-    waves100: false,
-    waves500: false,
-    waves2500: false,
-    time1h: false,
-    time12h: false,
-    wins1: false,
-    wins10: false,
-    wins50: false,
-    kills50: false,
-    kills250: false,
-    kills1000: false,
-    augmented: false,
-    darkestHour: false,
-    challenger: false,
-    problemSolver: false,
-    hellscape: false,
-    stunWave: false,
-    tickler: false,
-    diceaholic: false
+    ...DEFAULT_UNLOCKED
   },
   completedChallenges: {
     daily: false,
@@ -43,37 +51,55 @@ const ENEMY_DEFEAT_TARGET_250 = 250;
 const ENEMY_DEFEAT_TARGET_1000 = 1000;
 const DAILY_CHALLENGE_TARGET = 10;
 const STUN_WAVE_TARGET = 5;
-const FIRE_POISON_MATCH_TARGET = 100;
-const TIME_24H_SECONDS = 24 * 3600;
+const HOURS_1_SECONDS = 3600;
+const HOURS_12_SECONDS = 12 * 3600;
+const HOURS_24_SECONDS = 24 * 3600;
 
 class AchievementsManager {
-  constructor() {
-    this._data = this._load() || JSON.parse(JSON.stringify(DEFAULTS));
-    // Ensure defaults exist for backward compatibility
-    this._data.totals = {
-      ...DEFAULTS.totals,
-      ...(this._data.totals || {})
-    };
-    this._data.unlocked = {
-      ...DEFAULTS.unlocked,
-      ...(this._data.unlocked || {})
-    };
-    this._data.completedChallenges = {
-      ...DEFAULTS.completedChallenges,
-      ...(this._data.completedChallenges || {})
-    };
-    this._notifications = [];
-    this._achieveNotificationRunning = false;
-    this._scene = null;
+  static _data = null;
+  static _notifications = [];
+  static _achieveNotificationRunning = false;
+  static _scene = null;
+  static _playHeartbeatStarted = false;
+  static _heartbeatId = null;
+  static _waveStunTracker = null;
+  static _visibilityHandlerBound = false;
 
-    if (!this._playHeartbeatStarted) {
-      this._startPlayHeartbeat();
-    }
-    this._bindVisibilityHandler();
+  static {
+    this._bootstrap();
   }
 
-  // allow a scene to be registered for UI display. Pass `null` to unregister.
-  registerScene(scene) {
+  static _bootstrap() {
+    if (this._data) return;
+
+    const loaded = this._load() || {};
+    this._data = {
+      totals: { ...DEFAULTS.totals, ...(loaded.totals || {}) },
+      unlocked: { ...DEFAULTS.unlocked, ...(loaded.unlocked || {}) },
+      completedChallenges: { ...DEFAULTS.completedChallenges, ...(loaded.completedChallenges || {}) }
+    };
+
+    this._migrateLegacyAchievementKeys();
+    this._save();
+  }
+
+  static _ensureInitialized() {
+    if (!this._data) this._bootstrap();
+  }
+
+  static _migrateLegacyAchievementKeys() {
+    const unlocked = this._data?.unlocked || {};
+
+    // Backward compatibility with an older key that mapped to the 24h milestone.
+    if (unlocked.diceaholic) unlocked.time24h = true;
+    delete unlocked.diceaholic;
+
+    this._data.unlocked = { ...DEFAULTS.unlocked, ...unlocked };
+  }
+
+  // Allow a scene to be registered for UI display. Pass `null` to unregister.
+  static registerScene(scene) {
+    this._ensureInitialized();
     this._scene = scene || null;
 
     if (scene && scene.events && typeof scene.events.once === 'function') {
@@ -81,16 +107,17 @@ class AchievementsManager {
       scene.events.once('destroy', () => { if (this._scene === scene) this._scene = null; });
     }
 
-    // Start global playtime heartbeat if not already
     if (!this._playHeartbeatStarted) {
       this._startPlayHeartbeat();
     }
+    if (!this._visibilityHandlerBound) {
+      this._bindVisibilityHandler();
+    }
 
-    // Try flush queued notifications
     this._maybeDisplayNotifications();
   }
 
-  _load() {
+  static _load() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) return null;
@@ -101,7 +128,7 @@ class AchievementsManager {
     }
   }
 
-  _save() {
+  static _save() {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(this._data));
     } catch (e) {
@@ -109,25 +136,32 @@ class AchievementsManager {
     }
   }
 
-  getAll() {
+  static getAll() {
+    this._ensureInitialized();
     return this._data;
   }
 
+  static getDefinitions() {
+    return ACHIEVEMENT_DEFS.slice();
+  }
+
   // Read & clear notifications (returns array of achievement keys)
-  getNotifications() {
+  static getNotifications() {
     const copy = this._notifications.slice();
     this._notifications.length = 0;
     return copy;
   }
 
   // ---- Totals / recorders ----
-  addGame() {
+  static addGame() {
+    this._ensureInitialized();
     this._data.totals.gamesPlayed = (this._data.totals.gamesPlayed || 0) + 1;
     this.maybeUnlock('firstPlay');
     this._save();
   }
 
-  addWaves(n) {
+  static addWaves(n) {
+    this._ensureInitialized();
     n = Math.max(0, Math.floor(n || 0));
     this._data.totals.wavesPlayed = (this._data.totals.wavesPlayed || 0) + n;
     this._checkWaveMilestones();
@@ -135,11 +169,12 @@ class AchievementsManager {
   }
 
   // Backwards-compatible alias (rounds -> waves)
-  addRounds(n) {
+  static addRounds(n) {
     this.addWaves(n);
   }
-  
-  addWin(n = 1) {
+
+  static addWin(n = 1) {
+    this._ensureInitialized();
     n = Math.max(0, Math.floor(n || 1));
     this._data.totals.wins = (this._data.totals.wins || 0) + n;
     if (this._data.totals.wins >= 1) this.maybeUnlock('wins1');
@@ -148,7 +183,8 @@ class AchievementsManager {
     this._save();
   }
 
-  addMonsterDefeats(n = 1) {
+  static addMonsterDefeats(n = 1) {
+    this._ensureInitialized();
     n = Math.max(0, Math.floor(n || 0));
     if (n <= 0) return;
     this._data.totals.monstersDefeated = (this._data.totals.monstersDefeated || 0) + n;
@@ -156,7 +192,8 @@ class AchievementsManager {
     this._save();
   }
 
-  addDefenceDefeats(n = 1) {
+  static addDefenceDefeats(n = 1) {
+    this._ensureInitialized();
     n = Math.max(0, Math.floor(n || 0));
     if (n <= 0) return;
     this._data.totals.defencesDestroyed = (this._data.totals.defencesDestroyed || 0) + n;
@@ -164,19 +201,22 @@ class AchievementsManager {
     this._save();
   }
 
-  recordShopPurchase(rarity) {
+  static recordShopPurchase(rarity) {
+    this._ensureInitialized();
     if (!rarity) return;
     this.recordUnitUnlock(rarity);
   }
 
-  recordUnitUnlock(rarity) {
+  static recordUnitUnlock(rarity) {
+    this._ensureInitialized();
     if (!rarity) return;
     const r = String(rarity).toLowerCase();
-    if (r === 'epic') this.maybeUnlock('augmented');
-    if (r === 'legendary') this.maybeUnlock('darkestHour');
+    if (r === 'epic') this.maybeUnlock('ownEpic');
+    if (r === 'legendary') this.maybeUnlock('ownLegendary');
   }
 
-  recordWaveStun(waveKey, targetId) {
+  static recordWaveStun(waveKey, targetId) {
+    this._ensureInitialized();
     if (!waveKey || !targetId) return;
     if (!this._waveStunTracker || this._waveStunTracker.waveKey !== waveKey) {
       this._waveStunTracker = { waveKey, targets: new Set() };
@@ -187,8 +227,9 @@ class AchievementsManager {
     }
   }
 
-  // add total play seconds (called when session ends or on regular heartbeat if you want)
-  addPlaySeconds(seconds) {
+  // add total play seconds (called when session ends or on regular heartbeat)
+  static addPlaySeconds(seconds) {
+    this._ensureInitialized();
     seconds = Math.max(0, Math.floor(seconds || 0));
     this._data.totals.playTimeSeconds = (this._data.totals.playTimeSeconds || 0) + seconds;
     this._checkTimeMilestones();
@@ -196,11 +237,9 @@ class AchievementsManager {
   }
 
   // Complete a challenge
-  completeChallenge(key) {
+  static completeChallenge(key) {
+    this._ensureInitialized();
     if (!key) return;
-    if (!this._data.completedChallenges) {
-      this._data.completedChallenges = {};
-    }
     if (!this._data.completedChallenges[key]) {
       this._data.completedChallenges[key] = true;
     }
@@ -212,66 +251,57 @@ class AchievementsManager {
   }
 
   // Check if challenge completed
-  isChallengeCompleted(key) {
-    return (this._data.completedChallenges && this._data.completedChallenges[key]) || false;
+  static isChallengeCompleted(key) {
+    this._ensureInitialized();
+    return !!(this._data.completedChallenges && this._data.completedChallenges[key]);
   }
 
   // Checkers
-  _checkWaveMilestones() {
+  static _checkWaveMilestones() {
     const w = this._data.totals.wavesPlayed || 0;
     if (w >= 100) this.maybeUnlock('waves100');
     if (w >= 500) this.maybeUnlock('waves500');
     if (w >= 2500) this.maybeUnlock('waves2500');
   }
 
-  _checkEnemyMilestone() {
+  static _checkEnemyMilestone() {
     const monsters = this._data.totals.monstersDefeated || 0;
     const defences = this._data.totals.defencesDestroyed || 0;
     const total = monsters + defences;
-    if (total >= ENEMY_DEFEAT_TARGET) {
-      this.maybeUnlock('kills50');
-    }
-    if (total >= ENEMY_DEFEAT_TARGET_250) {
-      this.maybeUnlock('kills250');
-    }
-    if (total >= ENEMY_DEFEAT_TARGET_1000) {
-      this.maybeUnlock('kills1000');
-    }
+    if (total >= ENEMY_DEFEAT_TARGET) this.maybeUnlock('kills50');
+    if (total >= ENEMY_DEFEAT_TARGET_250) this.maybeUnlock('kills250');
+    if (total >= ENEMY_DEFEAT_TARGET_1000) this.maybeUnlock('kills1000');
   }
 
-  _checkTimeMilestones() {
+  static _checkTimeMilestones() {
     const t = this._data.totals.playTimeSeconds || 0;
-    if (t >= 3600) this.maybeUnlock('time1h');
-    if (t >= 12 * 3600) this.maybeUnlock('time12h');
-    if (t >= TIME_24H_SECONDS) this.maybeUnlock('time24h');
+    if (t >= HOURS_1_SECONDS) this.maybeUnlock('time1h');
+    if (t >= HOURS_12_SECONDS) this.maybeUnlock('time12h');
+    if (t >= HOURS_24_SECONDS) this.maybeUnlock('time24h');
   }
 
-  _checkDailyMilestones() {
+  static _checkDailyMilestones() {
     const d = this._data.totals.dailyChallengesCompleted || 0;
     if (d >= 1) this.maybeUnlock('daily1');
     if (d >= DAILY_CHALLENGE_TARGET) this.maybeUnlock('daily10');
   }
 
-  // mark unlocked and enqueue notification
-  maybeUnlock(key) {
+  // Mark unlocked and enqueue notification
+  static maybeUnlock(key) {
+    this._ensureInitialized();
     if (!key) return false;
     if (this._data.unlocked[key]) return false;
-    if (typeof this._data.unlocked[key] === 'undefined') {
-      this._data.unlocked[key] = true;
-    } else {
-      this._data.unlocked[key] = true;
-    }
 
+    this._data.unlocked[key] = true;
     this._notifications.unshift(key);
     if (this._notifications.length > 200) this._notifications.length = 200;
     this._save();
     this._maybeDisplayNotifications();
-
     return true;
   }
 
-  // attempt to display queued notifications using the registered scene (if any)
-  _maybeDisplayNotifications() {
+  // Attempt to display queued notifications using the registered scene (if any)
+  static _maybeDisplayNotifications() {
     if (!this._notifications || this._notifications.length === 0) return;
     if (!this._scene) return;
     if (this._achieveNotificationRunning) {
@@ -285,13 +315,25 @@ class AchievementsManager {
     this._displayAchievementSequence(notifs);
   }
 
+  static _getLocalizedAchievementMeta() {
+    const t = (key, fallback) => GlobalLocalization.t(key, fallback);
+    const out = {};
+    ACHIEVEMENT_DEFS.forEach((def) => {
+      out[def.key] = {
+        title: t(def.titleKey, def.title),
+        desc: t(def.descKey, def.desc)
+      };
+    });
+    return out;
+  }
+
   /**
    * Display a sequence of achievement popups.
    * - notifs: array of achievement keys (required)
    * - onComplete: optional callback when finished
    * - sceneOverride: optional Phaser.Scene to use for UI (useful for mid-game popups)
    */
-  _displayAchievementSequence(notifs, onComplete, sceneOverride) {
+  static _displayAchievementSequence(notifs, onComplete, sceneOverride) {
     if (!Array.isArray(notifs) || notifs.length === 0) {
       if (onComplete) onComplete();
       return;
@@ -304,29 +346,7 @@ class AchievementsManager {
       return;
     }
 
-    const meta = {
-      firstPlay: { title: "I'm New to This", desc: 'Play Protodice for the first time.' },
-      waves100: { title: 'Warm-Up Waves', desc: 'Progress 100 waves total.' },
-      waves500: { title: 'Battle-Seasoned', desc: 'Progress 500 waves total.' },
-      waves2500: { title: 'Endless War', desc: 'Progress 2,500 waves total.' },
-      time1h: { title: 'Just One More', desc: 'Play Protodice for 1 hour total.' },
-      time12h: { title: 'All In', desc: 'Play Protodice for 12 hours total.' },
-      time24h: { title: 'Diceaholic', desc: 'Play Protodice for 24 hours total.' },
-      wins1: { title: 'First Victory', desc: 'Win your first match.' },
-      wins10: { title: 'Veteran Commander', desc: 'Win 10 matches.' },
-      wins50: { title: 'Specialised Commander', desc: 'Win 50 matches.' },
-      kills50: { title: 'Enemy Down', desc: `Defeat ${ENEMY_DEFEAT_TARGET} enemies (monsters as defender / defences as attacker).` },
-      kills250: { title: 'No More Messing Around', desc: `Defeat ${ENEMY_DEFEAT_TARGET_250} enemies.` },
-      kills1000: { title: 'Monster Slayer', desc: `Defeat ${ENEMY_DEFEAT_TARGET_1000} enemies.` },
-      daily1: { title: 'Challenger', desc: 'Beat a daily challenge.' },
-      daily10: { title: 'Problem Solver', desc: `Beat ${DAILY_CHALLENGE_TARGET} daily challenges.` },
-      ownEpic: { title: 'Augmented', desc: 'Obtain an Epic unit.' },
-      ownLegendary: { title: 'In Our Darkest Hour...', desc: 'Obtain a Legendary unit.' },
-      hellscape: { title: 'Hellscape', desc: "Defeat Deucifer in Deucifer's Pit." },
-      tickler: { title: 'The Tickler', desc: `Deal over ${FIRE_POISON_MATCH_TARGET} fire/poison damage in a match.` },
-      stunWave: { title: "Who's Stunning Now?", desc: `Stun or freeze ${STUN_WAVE_TARGET} enemies in one wave.` }
-    };
-
+    const meta = this._getLocalizedAchievementMeta();
     this._achieveNotificationRunning = true;
 
     const displayOne = (idx) => {
@@ -347,13 +367,14 @@ class AchievementsManager {
       const key = notifs[idx];
       const item = meta[key] || { title: key, desc: '' };
 
-      // popup coordinates
       const boxY = displayScene.cameras.main.height - 120;
       const boxW = Math.min(800, displayScene.cameras.main.width - 120);
       const boxH = 72;
       const x = displayScene.cameras.main.centerX;
 
-      let rect, title, desc;
+      let rect;
+      let title;
+      let desc;
       try {
         rect = displayScene.add.rectangle(x, boxY + 40, boxW, boxH, 0x111111, 0.95).setDepth(1000).setAlpha(0);
         rect.setStrokeStyle(2, 0x66ff66, 1);
@@ -363,10 +384,10 @@ class AchievementsManager {
 
         displayScene.tweens.add({
           targets: [rect, title, desc],
-          y: `-=${40}`,
+          y: '-=40',
           alpha: 1,
           duration: 260,
-          ease: 'Cubic.easeOut',
+          ease: 'Cubic.easeOut'
         });
       } catch (e) {
         const remainder = notifs.slice(idx);
@@ -389,7 +410,7 @@ class AchievementsManager {
 
           displayScene.tweens.add({
             targets: [rect, title, desc],
-            y: `+=40`,
+            y: '+=40',
             alpha: 0,
             duration: 260,
             ease: 'Cubic.easeIn',
@@ -413,27 +434,32 @@ class AchievementsManager {
         this._notifications = remainder.concat(this._notifications);
         this._achieveNotificationRunning = false;
         if (onComplete) onComplete();
-        return;
       }
     };
 
     displayOne(0);
   }
-  
+
   // ---------- playtime heartbeat (global) ----------
-  _startPlayHeartbeat() {
+  static _startPlayHeartbeat() {
     if (this._playHeartbeatStarted) return;
+    if (typeof window === 'undefined' || typeof document === 'undefined') return;
+
     this._playHeartbeatStarted = true;
     this._heartbeatId = window.setInterval(() => {
       if (document.visibilityState === 'visible') {
         this.addPlaySeconds(1);
       }
     }, 1000);
-	
+
     window.addEventListener('beforeunload', () => { this._save(); });
   }
 
-  _bindVisibilityHandler() {
+  static _bindVisibilityHandler() {
+    if (typeof document === 'undefined') return;
+    if (this._visibilityHandlerBound) return;
+
+    this._visibilityHandlerBound = true;
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') {
         this._maybeDisplayNotifications();
@@ -442,5 +468,5 @@ class AchievementsManager {
   }
 }
 
-const GlobalAchievements = new AchievementsManager();
+const GlobalAchievements = AchievementsManager;
 export default GlobalAchievements;

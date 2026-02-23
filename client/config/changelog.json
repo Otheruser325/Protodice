@@ -1,16 +1,29 @@
 {
-  "title": "Protodice — Changelog",
+  "title": "Protodice - Changelog",
   "entries": [
+    {
+      "version": "0.7.0",
+      "date": "22/02/2026",
+      "tags": ["Pre-Release", "Updates", "Improvements", "Balance"],
+      "changes": [
+        "Core Updates:\\n- added game version footer to menu and play mode scenes\\n- improved preload flow so defence/monster data is initialised better across the board",
+        "Combat and Behavior:\\n- fixed skirmisher edge case where 2-step skirmishers could move into valid range but fail to attack in the same turn.\\n- fixed revive cleanup edge cases so max-revive units are removed consistently when they finally die\\n- improved temporary-unit expiry handling and history logging consistency during combat",
+        "Visual and Data Pipeline:\\n- improved explosion and dice sprite rendering so it doesn't feel clunky\\n- added dedicated unit-expired history logging for temporary units",
+        "Loadout and UX:\\n- added a loadout completeness check before starting a match\\n- added loadout shuffle, readiness status, and incomplete-category indicators in local/online loadout menus",
+        "Architecture:\\n- improved manager architecture to stabilise everything across the board\\n- refactored achievements to a shared definition-driven structure (manager + scene) to reduce hardcoded UI data",
+        "Unit Balance:\\n- Lazor Beam: laser beam switched from extension 4 -> full-row travel\\n- Cryo Fan: laser beam switched from full-row -> extension 4\\n- Shock Launcher: reload delay 3 -> 4\\n- Machine Gun: damage 8 -> 9\\n- Zombie: damage 14 -> 6, ammo 1 -> 2, max revives 2 -> 3\\n- Skeleton: health 25 -> 27.5\\n- Electro Mage: health 25 -> 27.5"
+      ]
+    },
     {
       "version": "0.6.0",
       "date": "11/02/2026",
       "tags": ["Pre-Release", "Updates"],
       "changes": [
-	    "New Features: \n• added 8 new achievements",
-        "Quality of Life: \n• added projectiles during the combat loop\n• added sound effects across different effects\n• improved sprite initialisation and framework across the game\n• player loadouts are now displayed in the challenge scene to tell what you have and your opponent\n• added hotkeys (Spacebar/R, T) for rolling dice and ending turns respectively",
-		"Unit Balance: \n• Ghost: \n• now has a 10-wave lifespan instead of being on the battlefield permanently until defeated\n• Bat: \n• can fly over allied monsters (if it has the opportunity to do so)\n Harpy: \n• can fly over allied monsters (if it has the opportunity to do so)",
-        "Minor Changes: \n• improved combat loop so monsters don't often get stuck behind allied monsters\n• improved skirmisher behaviour",
-        "Bug Fixes: \n• fixed an edge case with force field behaviour causing disruptions across monster movement\n• fixed an issue that caused damage amplifier behaviour to not work as intended\n• minor fixes and improvements."
+        "New Features:\\n- added 8 new achievements",
+        "Quality of Life:\\n- added projectiles during the combat loop\\n- added sound effects across different effects\\n- improved sprite initialization and framework usage across the game\\n- added challenge-scene loadout visibility for both players\\n- added hotkeys (Spacebar/R, T) for rolling dice and ending turns",
+        "Unit Balance:\\n- Ghost: now has a 10-wave lifespan instead of being permanent until defeated\\n- Bat: can fly over allied monsters when pathing allows it\\n- Harpy: can fly over allied monsters when pathing allows it",
+        "Minor Changes:\\n- improved combat loop so monsters are less likely to get stuck behind allies\\n- improved skirmisher behavior",
+        "Bug Fixes:\\n- fixed force field edge cases that disrupted monster movement\\n- fixed an issue where Damage Amplifier behavior did not apply correctly.\\n- minor stability and polish fixes"
       ]
     },
     {
@@ -18,7 +31,7 @@
       "date": "05/02/2026",
       "tags": ["Pre-Release"],
       "changes": [
-        "Alpha release on Protodice! Let us know what you think about our new game!"
+        "Alpha release for Protodice."
       ]
     }
   ]

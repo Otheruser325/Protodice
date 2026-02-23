@@ -2,7 +2,7 @@
     "TypeName": "ElectroMage",
     "FullName": "Electro Mage",
     "Rarity": "Uncommon",
-    "Health": 25,
+    "Health": 27.5,
     "Damage": 15,
     "Range": 3,
     "Speed": 1,

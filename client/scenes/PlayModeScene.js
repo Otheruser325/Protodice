@@ -2,6 +2,7 @@ import GlobalAudio from '../utils/AudioManager.js';
 import GlobalBackground from '../utils/BackgroundManager.js';
 import ErrorHandler from '../utils/ErrorManager.js';
 import GlobalLocalization from '../utils/LocalizationManager.js';
+import { GAME_VERSION } from '../utils/VersionManager.js';
 
 export default class PlayModeScene extends Phaser.Scene {
     constructor() {
@@ -107,5 +108,12 @@ export default class PlayModeScene extends Phaser.Scene {
             GlobalAudio.playButton(this);
             this.scene.start('MenuScene');
         });
+
+        const footerY = this.cameras.main.height - 40;
+        this.add.text(centerX, footerY, `Version ${GAME_VERSION}`, {
+            fontSize: 18,
+            fontFamily: '"Press Start 2P", cursive',
+            color: '#cccccc'
+        }).setOrigin(0.5);
     }
 }

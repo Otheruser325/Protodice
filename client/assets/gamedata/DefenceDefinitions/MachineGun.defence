@@ -3,7 +3,7 @@
 	"FullName": "Machine Gun",
 	"Rarity": "Common",
 	"Health": 30,
-    "Damage": 8,
+    "Damage": 9,
     "Range": 3,
 	"Ammo": 2,
 	"ReloadDelay": 1,

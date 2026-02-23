@@ -213,6 +213,9 @@
             <T id="CONFIG_COLS" l="0">Cols: {0}</T>
             <T id="CONFIG_START_GAME" l="0">Start Game</T>
 
+
+            <T id="CONFIG_LOADOUT_REQUIRED" l="0">Complete all loadouts (Defence/Monster Normal/Proto) before starting.</T>
+
             <T id="CHALLENGE_DESC_FALLBACK" l="0">Challenge description</T>
             <T id="CHALLENGE_REWARD_LINE" l="0">Reward: +{0} Tokens</T>
             <T id="CHALLENGE_SIDES_LINE" l="0">You: {0} | Opponent: {1} ({2})</T>
@@ -268,6 +271,24 @@
             <T id="LOADOUT_SLOT" l="0">{0}.</T>
             <T id="LOADOUT_AVAILABLE" l="0">Available Units</T>
             <T id="LOADOUT_SHOP" l="0">Shop</T>
+
+
+            <T id="LOADOUT_SHUFFLE" l="0">Shuffle</T>
+
+
+            <T id="LOADOUT_SHUFFLE_LOCKED" l="0">Shuffle (Need 5)</T>
+
+
+            <T id="LOADOUT_SHUFFLE_NEED5" l="0">Need at least 5 unlocked units in this category to shuffle.</T>
+
+
+            <T id="LOADOUT_SHUFFLED" l="0">Loadout shuffled!</T>
+
+
+            <T id="LOADOUT_READY" l="0">All loadouts ready</T>
+
+
+            <T id="LOADOUT_INCOMPLETE" l="0">Incomplete: {0}</T>
             <T id="LOADOUT_DEV" l="0">DEV</T>
             <T id="LOADOUT_CLASS" l="0">Class</T>
             <T id="LOADOUT_PLACEMENT" l="0">Placement</T>
@@ -349,6 +370,9 @@
             <T id="HISTORY_ROLLED" l="0">{0} rolled: {1}</T>
             <T id="HISTORY_UNIT_DEFEATED" l="0">{0} was defeated</T>
             <T id="HISTORY_UNIT_REMOVED" l="0">{0} was removed</T>
+
+
+            <T id="HISTORY_UNIT_EXPIRED" l="0">{0} expired</T>
 
             <T id="TOOLTIP_TURN" l="0">turn</T>
             <T id="TOOLTIP_TURNS" l="0">turns</T>
@@ -534,8 +558,7 @@
             <T id="UNIT_Thrower" l="0">Thrower</T>
             <T id="UNIT_Troll" l="0">Troll</T>
             <T id="UNIT_Zombie" l="0">Zombie</T>
-
-                    <T id="TOOLTIP_EFFECT_GENERIC" l="0">{0}: {1}</T>
+            <T id="TOOLTIP_EFFECT_GENERIC" l="0">{0}: {1}</T>
         </IDS>
    </Language>
 </LocData>

@@ -21,6 +21,7 @@
 		"Skeleton.monster",
 		"Surgeon.monster",
 		"Tank.monster",
+		"TestMonster.monster",
 		"Thrower.monster",
         "Troll.monster",
 		"Zombie.monster"

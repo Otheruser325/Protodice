@@ -69,6 +69,7 @@ export default class OnlineLoadoutScene extends Phaser.Scene {
         this._fmt = fmt;
         this._unitName = unitName;
         this._unitDesc = unitDesc;
+        this._normalizeAllLoadoutShapes();
 
         // Title with pixel font
         this.add.text(600, 40, t('LOADOUT_TITLE', 'Loadouts'), {
@@ -133,6 +134,19 @@ export default class OnlineLoadoutScene extends Phaser.Scene {
             this.refresh();
         });
 
+        this.shuffleBtn = this.add.text(900, 160, t('LOADOUT_SHUFFLE', 'Shuffle'), {
+            fontFamily: '"Press Start 2P", cursive',
+            fontSize: '12px',
+            color: '#66ff66',
+            backgroundColor: '#224422',
+            padding: { x: 8, y: 5 }
+        }).setOrigin(0.5).setInteractive().setDepth(10);
+
+        this.shuffleBtn.on('pointerdown', () => {
+            GlobalAudio.playButton(this);
+            this.shuffleCurrentLoadout();
+        });
+
         // Loadout slots section
         this.add.text(600, 200, t('LOADOUT_YOUR', 'Your Loadout'), {
             fontFamily: '"Press Start 2P", cursive',
@@ -159,6 +173,12 @@ export default class OnlineLoadoutScene extends Phaser.Scene {
             fontFamily: '"Press Start 2P", cursive',
             fontSize: '14px',
             color: '#aaaaaa'
+        }).setOrigin(0.5).setDepth(10);
+
+        this.loadoutStatusText = this.add.text(600, 520, '', {
+            fontFamily: '"Press Start 2P", cursive',
+            fontSize: '10px',
+            color: '#ffcc66'
         }).setOrigin(0.5).setDepth(10);
 
         // Back button
@@ -221,6 +241,8 @@ export default class OnlineLoadoutScene extends Phaser.Scene {
     }
 
     refresh() {
+        this._normalizeAllLoadoutShapes();
+
         // Update tab colors
         this.defenceTab.setColor(this.currentTab === 'defence' ? '#ffff66' : '#ffffff');
         this.monsterTab.setColor(this.currentTab === 'monster' ? '#ffff66' : '#ffffff');
@@ -235,6 +257,8 @@ export default class OnlineLoadoutScene extends Phaser.Scene {
         // Refresh all UI elements
         this.refreshSlots();
         this.refreshUnitGrid();
+        this._refreshShuffleButtonState();
+        this._refreshLoadoutStatus();
     }
 
     getRarityColor(rarity) {
@@ -1079,6 +1103,150 @@ _getUnitAbilities(unitData) {
         }
     }
 
+    _normalizeLoadoutShape(loadout) {
+        const out = Array.isArray(loadout) ? loadout.slice(0, 5) : [];
+        while (out.length < 5) out.push(null);
+        return out.map((v) => (typeof v === 'string' && v.trim()) ? v.trim() : null);
+    }
+
+    _normalizeAllLoadoutShapes() {
+        this.defenceNormalLoadout = this._normalizeLoadoutShape(this.defenceNormalLoadout);
+        this.defenceProtoLoadout = this._normalizeLoadoutShape(this.defenceProtoLoadout);
+        this.monsterNormalLoadout = this._normalizeLoadoutShape(this.monsterNormalLoadout);
+        this.monsterProtoLoadout = this._normalizeLoadoutShape(this.monsterProtoLoadout);
+    }
+
+    _getCategoryContext(tab = this.currentTab, subTab = this.currentSubTab) {
+        const isDefence = tab === 'defence';
+        const data = isDefence ? (DefenceFactory.defenceData || {}) : (MonsterFactory.monsterData || {});
+        const owned = isDefence ? (this.ownedDefences || []) : (this.ownedMonsters || []);
+        const isProto = subTab === 'proto';
+        return { data, owned, isProto };
+    }
+
+    _getOwnedUnitsForCategory(tab = this.currentTab, subTab = this.currentSubTab) {
+        const { data, owned, isProto } = this._getCategoryContext(tab, subTab);
+        const unique = [];
+        const seen = new Set();
+        for (const key of owned) {
+            if (!key || seen.has(key)) continue;
+            const def = data[key];
+            if (!def) continue;
+            if (!!def.IsProto !== !!isProto) continue;
+            seen.add(key);
+            unique.push(key);
+        }
+        return unique;
+    }
+
+    _isLoadoutComplete(loadout, tab, subTab) {
+        const arr = this._normalizeLoadoutShape(loadout);
+        const { data, owned, isProto } = this._getCategoryContext(tab, subTab);
+        const ownedSet = new Set(owned);
+        for (let i = 0; i < 5; i++) {
+            const key = arr[i];
+            if (!key) return false;
+            const def = data[key];
+            if (!def) return false;
+            if (!!def.IsProto !== !!isProto) return false;
+            if (!ownedSet.has(key)) return false;
+        }
+        return true;
+    }
+
+    _getMissingLoadoutLabels() {
+        const t = this._t || ((key, fallback) => fallback);
+        const checks = [
+            {
+                tab: 'defence',
+                subTab: 'normal',
+                loadout: this.defenceNormalLoadout,
+                label: `${t('LOADOUT_DEFENCES', 'Defences')} ${t('LOADOUT_NORMAL', 'Normal')}`
+            },
+            {
+                tab: 'defence',
+                subTab: 'proto',
+                loadout: this.defenceProtoLoadout,
+                label: `${t('LOADOUT_DEFENCES', 'Defences')} ${t('LOADOUT_PROTO', 'Proto')}`
+            },
+            {
+                tab: 'monster',
+                subTab: 'normal',
+                loadout: this.monsterNormalLoadout,
+                label: `${t('LOADOUT_MONSTERS', 'Monsters')} ${t('LOADOUT_NORMAL', 'Normal')}`
+            },
+            {
+                tab: 'monster',
+                subTab: 'proto',
+                loadout: this.monsterProtoLoadout,
+                label: `${t('LOADOUT_MONSTERS', 'Monsters')} ${t('LOADOUT_PROTO', 'Proto')}`
+            }
+        ];
+        return checks
+            .filter(c => !this._isLoadoutComplete(c.loadout, c.tab, c.subTab))
+            .map(c => c.label);
+    }
+
+    _refreshLoadoutStatus() {
+        if (!this.loadoutStatusText) return;
+        const missing = this._getMissingLoadoutLabels();
+        if (!missing.length) {
+            this.loadoutStatusText.setColor('#66ff66');
+            this.loadoutStatusText.setText(this._t ? this._t('LOADOUT_READY', 'All loadouts ready') : 'All loadouts ready');
+            return;
+        }
+        this.loadoutStatusText.setColor('#ffcc66');
+        const msg = this._fmt
+            ? this._fmt('LOADOUT_INCOMPLETE', 'Incomplete: {0}', missing.join(', '))
+            : `Incomplete: ${missing.join(', ')}`;
+        this.loadoutStatusText.setText(msg);
+    }
+
+    _refreshShuffleButtonState() {
+        if (!this.shuffleBtn) return;
+        const ownedUnits = this._getOwnedUnitsForCategory();
+        const canShuffle = ownedUnits.length >= 5;
+        if (canShuffle) {
+            this.shuffleBtn.setColor('#66ff66');
+            this.shuffleBtn.setBackgroundColor('#224422');
+            this.shuffleBtn.setText(this._t ? this._t('LOADOUT_SHUFFLE', 'Shuffle') : 'Shuffle');
+            this.shuffleBtn.setInteractive();
+            return;
+        }
+        this.shuffleBtn.setColor('#999999');
+        this.shuffleBtn.setBackgroundColor('#333333');
+        this.shuffleBtn.setText(this._t ? this._t('LOADOUT_SHUFFLE_LOCKED', 'Shuffle (Need 5)') : 'Shuffle (Need 5)');
+        this.shuffleBtn.disableInteractive?.();
+    }
+
+    shuffleCurrentLoadout() {
+        const pool = this._getOwnedUnitsForCategory();
+        if (pool.length < 5) {
+            AlertManager.show(
+                this,
+                this._t ? this._t('LOADOUT_SHUFFLE_NEED5', 'Need at least 5 unlocked units in this category to shuffle.') : 'Need at least 5 unlocked units in this category to shuffle.',
+                'warning'
+            );
+            return;
+        }
+
+        const shuffled = pool.slice();
+        for (let i = shuffled.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+
+        const next = shuffled.slice(0, 5);
+        const loadout = this.getCurrentLoadout();
+        for (let i = 0; i < 5; i++) {
+            loadout[i] = next[i] || null;
+        }
+
+        this.saveData();
+        this.refresh();
+        AlertManager.show(this, this._t ? this._t('LOADOUT_SHUFFLED', 'Loadout shuffled!') : 'Loadout shuffled!', 'success');
+    }
+
     getAvailableUnits() {
         const factory = this.currentTab === 'defence' ? DefenceFactory : MonsterFactory;
         const data = factory.defenceData || factory.monsterData;
@@ -1139,6 +1307,7 @@ _getUnitAbilities(unitData) {
     }
 
     saveData() {
+        this._normalizeAllLoadoutShapes();
         localStorage.setItem('online_diceTokens', this.diceTokens);
         localStorage.setItem('online_defenceNormalLoadout', JSON.stringify(this.defenceNormalLoadout));
         localStorage.setItem('online_defenceProtoLoadout', JSON.stringify(this.defenceProtoLoadout));

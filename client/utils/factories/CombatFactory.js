@@ -668,48 +668,29 @@ export default class CombatFactory {
                 } catch (e) {
                     // Sound not available, continue silently
                 }
-                
-                // Mark unit as being removed to prevent further actions
-                u._beingRemoved = true;
-                
-                // Clear grid position immediately to prevent bodyblocking
-                if (u.position && scene.grid && scene.grid[u.position.row] && scene.grid[u.position.row][u.position.col]) {
-                    const cell = scene.grid[u.position.row][u.position.col];
-                    if (cell.unit === u) {
-                        cell.unit = null;
-                        cell.sprite = null;
-                    }
-                }
-                
-                // Destroy stat bars to prevent lingering UI elements
-                try {
-                    if (u.healthBar) { u.healthBar.destroy(); u.healthBar = null; }
-                    if (u.healthBarBg) { u.healthBarBg.destroy(); u.healthBarBg = null; }
-                    if (u.ammoBar) { u.ammoBar.destroy(); u.ammoBar = null; }
-                    if (u.ammoBarBg) { u.ammoBarBg.destroy(); u.ammoBarBg = null; }
-                    if (u.reloadBar) { u.reloadBar.destroy(); u.reloadBar = null; }
-                    if (u.reloadBarBg) { u.reloadBarBg.destroy(); u.reloadBarBg = null; }
-                } catch (e) {
-                    if (DEBUG_MODE) console.warn('[Lifespan] stat bar cleanup failed', e);
-                }
-                
-                // Destroy sprite
-                try {
-                    if (u.sprite) { u.sprite.destroy(); u.sprite = null; }
-                } catch (e) {
-                    if (DEBUG_MODE) console.warn('[Lifespan] sprite cleanup failed', e);
-                }
-                
-                // Trigger on-death effects
-                try {
+                u._expiredByLifespan = true;
+
+                // Route lifespan expiry through the canonical remove path so
+                // history logging, status visual cleanup, and on-remove effects stay consistent.
+                if (typeof scene._removeUnitCompletely === 'function') {
+                    scene._removeUnitCompletely(u);
+                } else {
+                    // Defensive fallback for scenes without _removeUnitCompletely.
                     SpecialEffectFactory.handleOnDeath?.(u, scene);
-                } catch (e) {
-                    if (DEBUG_MODE) console.warn('[Lifespan] handleOnDeath failed', e);
-                }
-                
-                // Remove from units array immediately
-                if (Array.isArray(scene.units)) {
-                    scene.units = scene.units.filter(unit => unit !== u);
+                    SpecialEffectFactory.handleOnRemove?.(u, scene);
+                    if (u.position && scene.grid && scene.grid[u.position.row] && scene.grid[u.position.row][u.position.col]) {
+                        const cell = scene.grid[u.position.row][u.position.col];
+                        if (cell.unit === u) {
+                            cell.unit = null;
+                            cell.sprite = null;
+                        }
+                    }
+                    try {
+                        if (u.sprite) { u.sprite.destroy(); u.sprite = null; }
+                    } catch (e) {}
+                    if (Array.isArray(scene.units)) {
+                        scene.units = scene.units.filter(unit => unit !== u);
+                    }
                 }
             } catch (e) {
                 if (DEBUG_MODE) console.warn('[tickLifespans] expiry handling failed', e);
@@ -793,6 +774,15 @@ export default class CombatFactory {
     static _getMonsterMoveSteps(monster, scene) {
         if (!monster || !Number.isFinite(monster.speed)) return 0;
 
+        const resolutionTick = Number(scene?._movementResolutionTick);
+        if (
+            Number.isFinite(resolutionTick) &&
+            monster._moveStepsTick === resolutionTick &&
+            Number.isFinite(monster._cachedMoveSteps)
+        ) {
+            return Math.max(0, Math.floor(monster._cachedMoveSteps));
+        }
+
         const speedAbs = Math.abs(monster.speed);
         const intSteps = Math.floor(speedAbs);
         let steps = intSteps;
@@ -806,6 +796,11 @@ export default class CombatFactory {
             monster._fractionalMoveAcc = next - extra;
         } else if (!Number.isFinite(monster._fractionalMoveAcc)) {
             monster._fractionalMoveAcc = 0;
+        }
+
+        if (Number.isFinite(resolutionTick)) {
+            monster._moveStepsTick = resolutionTick;
+            monster._cachedMoveSteps = steps;
         }
 
         return steps;
@@ -1221,6 +1216,7 @@ export default class CombatFactory {
      */
     static async resolveCombat(scene) {
         if (!scene) return;
+        scene._movementResolutionTick = (Number.isFinite(scene._movementResolutionTick) ? scene._movementResolutionTick : 0) + 1;
         const wait = (typeof scene._wait === 'function') ?
             scene._wait.bind(scene) :
             (ms) => new Promise(resolve => setTimeout(resolve, ms));
@@ -1246,6 +1242,22 @@ export default class CombatFactory {
             if (!Array.isArray(list) || list.length === 0) return list || [];
             const nonCharmed = list.filter(u => !StatusEffectFactory.isUnitCharmed(u));
             return nonCharmed.length ? nonCharmed : list;
+        };
+        const applyDefenceBlindSpotFilter = (def, list) => {
+            if (!Array.isArray(list) || !def) return Array.isArray(list) ? list : [];
+            if (!(def.hasBlindSpot || def.HasBlindSpot)) return list;
+            const blindRange = Number(def.blindRange || def.BlindRange || 1);
+            const filtered = list.filter(u => {
+                const targetCol = u?.position?.col;
+                const defCol = def?.position?.col;
+                if (!Number.isFinite(targetCol) || !Number.isFinite(defCol)) return false;
+                return Math.abs(targetCol - defCol) > blindRange;
+            });
+            return filtered.length ? filtered : list;
+        };
+        const isBlockAllLanesForceField = (unit) => {
+            if (!unit || !Array.isArray(unit.specialEffects)) return false;
+            return unit.specialEffects.some(e => e?.Type === 'BlockAllLanes');
         };
 
         // Helper: build enemies for a defence (forward direction = positive col diff)
@@ -1543,11 +1555,7 @@ export default class CombatFactory {
                     }
 
                     // filter blind spots
-                    if (def.hasBlindSpot || def.HasBlindSpot) {
-                        const blindRange = def.blindRange || def.BlindRange || 1;
-                        const filtered = enemies.filter(u => Math.abs(u.position.col - def.position.col) > blindRange);
-                        if (filtered.length) enemies = filtered;
-                    }
+                    enemies = applyDefenceBlindSpotFilter(def, enemies);
 
                     const defIsCharmed = StatusEffectFactory.isUnitCharmed(def);
                     // Sort left-to-right (front most first), or nearest when charmed
@@ -1581,8 +1589,10 @@ export default class CombatFactory {
                             } catch (e) {
                                 if (DEBUG_MODE) console.warn('[resolveCombat] interceptWithForceField(def) failed mid-volley', e);
                             }
+                            enemies = applyDefenceBlindSpotFilter(def, enemies);
 
                             if (!enemies.length) break;
+                            if (SpecialEffectFactory.hasBlindSpot(def, enemies, true)) break;
                             let perVolleyTargets = SpecialEffectFactory.getMultiShotTargets(def, enemies) || [];
 
                             // prefer condensed target
@@ -1615,12 +1625,14 @@ export default class CombatFactory {
                                 // If target invalid/dead, pick a fresh target from enemies
                                 if (!target || target.currentHealth <= 0) {
                                     enemies = buildMonsterEnemiesForDef(def, rowsToCheck);
+                                    enemies = applyDefenceBlindSpotFilter(def, enemies);
                                     if (defIsCharmed) {
                                         enemies.sort((a, b) => Math.abs(a.position.col - def.position.col) - Math.abs(b.position.col - def.position.col));
                                     } else {
                                         enemies.sort((a, b) => a.position.col - b.position.col);
                                     }
                                     if (enemies.length === 0) break;
+                                    if (SpecialEffectFactory.hasBlindSpot(def, enemies, true)) break;
                                     target = CombatFactory.pickTargetByMode(enemies, def.targetingMode || 'First', def);
                                 }
                                 if (!target) continue;
@@ -1667,12 +1679,14 @@ export default class CombatFactory {
                                 let target = chosenTargetsForShots.length ? chosenTargetsForShots.shift() : null;
                                 if (!target || target.currentHealth <= 0) {
                                     enemies = buildMonsterEnemiesForDef(def, rowsToCheck);
+                                    enemies = applyDefenceBlindSpotFilter(def, enemies);
                                     if (defIsCharmed) {
                                         enemies.sort((a, b) => Math.abs(a.position.col - def.position.col) - Math.abs(b.position.col - def.position.col));
                                     } else {
                                         enemies.sort((a, b) => a.position.col - b.position.col);
                                     }
                                     if (enemies.length === 0) break;
+                                    if (SpecialEffectFactory.hasBlindSpot(def, enemies, true)) break;
                                     target = CombatFactory.pickTargetByMode(enemies, def.targetingMode || 'First', def);
                                 }
                                 if (!target) break;
@@ -1758,6 +1772,7 @@ export default class CombatFactory {
 
         const tryMonsterAttack = async (mon, rowsToCheck) => {
             let removedByAmmo = false;
+            let attacked = false;
             const monIsCharmed = StatusEffectFactory.isUnitCharmed(mon);
 
             let enemies = buildDefenceEnemiesForMon(mon, rowsToCheck);
@@ -1842,6 +1857,7 @@ export default class CombatFactory {
                             target = CombatFactory.pickTargetByMode(enemies, mon.targetingMode || 'First', mon);
                         }
                         if (!target) continue;
+                        attacked = true;
 
                         if (!CombatFactory.canHit(mon, target, scene)) {
                             CombatFactory._showMiss(scene, target);
@@ -1869,7 +1885,7 @@ export default class CombatFactory {
                     }
                 }
 
-                return { attacked: true, removedByAmmo };
+                return { attacked, removedByAmmo };
             }
 
             const perShotTargets = SpecialEffectFactory.getMultiShotTargets(mon, enemies);
@@ -1886,6 +1902,7 @@ export default class CombatFactory {
                     target = CombatFactory.pickTargetByMode(enemies, mon.targetingMode || 'First', mon);
                 }
                 if (!target) break;
+                attacked = true;
 
                 const nearestFront = enemies.slice().sort((a, b) => Math.abs(a.position.col - mon.position.col) - Math.abs(b.position.col - mon.position.col))[0];
                 if (!target && nearestFront) target = nearestFront;
@@ -1917,7 +1934,7 @@ export default class CombatFactory {
                 await wait(60);
             }
 
-            return { attacked: true, removedByAmmo };
+            return { attacked, removedByAmmo };
         };
 
         for (const mon of monstersToProcess) {
@@ -1953,8 +1970,20 @@ export default class CombatFactory {
 
                 const isCharmed = StatusEffectFactory.isUnitCharmed(mon);
                 const speedAbs = Number.isFinite(mon.speed) ? Math.abs(mon.speed) : 0;
+                const preMoveSteps = CombatFactory._getMonsterMoveSteps(mon, scene);
+                const canSkirmish = preMoveSteps >= 2;
+                let skipInitialAttack = false;
+                if (canSkirmish && !isCharmed) {
+                    const inRangePreAttack = buildDefenceEnemiesForMon(mon, rowsToCheck);
+                    if (inRangePreAttack.length > 0) {
+                        const nonShieldTargets = inRangePreAttack.filter(e => !isBlockAllLanesForceField(e));
+                        skipInitialAttack = nonShieldTargets.length === 0;
+                    }
+                }
 
-                const attackResult = await tryMonsterAttack(mon, rowsToCheck);
+                const attackResult = skipInitialAttack
+                    ? { attacked: false, removedByAmmo: false }
+                    : await tryMonsterAttack(mon, rowsToCheck);
                 if (attackResult.removedByAmmo) continue;
                 if (attackResult.attacked) {
                     // Attack succeeded - try advancing into killed target
@@ -2021,11 +2050,16 @@ export default class CombatFactory {
                 // No attack happened - handle normal movement
                 // Check if already in range before moving
                 const range = Math.max(1, Number(mon.range || 0) || 1);
+                const moveSteps = CombatFactory._getMonsterMoveSteps(mon, scene);
+                const canSkirmishPostMove = moveSteps >= 2;
                 const enemiesInRange = buildDefenceEnemiesForMon(mon, rowsToCheck);
+                const enemiesForRangeCheck = (canSkirmishPostMove && !isCharmed)
+                    ? enemiesInRange.filter(e => !isBlockAllLanesForceField(e))
+                    : enemiesInRange;
                 let alreadyInRange = false;
                 
-                if (enemiesInRange.length > 0) {
-                    const targetCol = enemiesInRange[0]?.position?.col;
+                if (enemiesForRangeCheck.length > 0) {
+                    const targetCol = enemiesForRangeCheck[0]?.position?.col;
                     const monCol = mon.position?.col ?? 0;
                     if (Number.isFinite(targetCol)) {
                         const dist = Math.abs(targetCol - monCol);
@@ -2043,12 +2077,9 @@ export default class CombatFactory {
                 }
                 
                 // Not in range yet - approach and try to engage
-                const moveSteps = CombatFactory._getMonsterMoveSteps(mon, scene);
                 let stepsToMove = moveSteps;
                 let shouldTryPostMoveAttack = false;
                 const approachEnemies = buildDefenceEnemiesForMon(mon, rowsToCheck, approachRange);
-
-                const canSkirmishPostMove = moveSteps >= 2;
 
                 // Calculate if we can reach range this turn
                 if (moveSteps > 0 && approachEnemies.length > 0) {
@@ -2060,8 +2091,8 @@ export default class CombatFactory {
                         
                         // Only move if we can actually reach range this turn.
                         // Post-move attack is reserved for skirmisher-capable units.
-                        if (needed > 0 && needed < moveSteps && canSkirmishPostMove) {
-                            stepsToMove = needed;
+                        if (needed > 0 && needed <= moveSteps && canSkirmishPostMove) {
+                            stepsToMove = Math.min(stepsToMove, needed);
                             shouldTryPostMoveAttack = true;
                         }
                     }
@@ -2073,7 +2104,7 @@ export default class CombatFactory {
                         ignoreForceFields: isCharmed,
                         stepsOverride: stepsToMove
                     });
-                    const blockedBeforePlanned = canSkirmishPostMove && movedSteps > 0 && movedSteps < stepsToMove;
+                    const blockedBeforePlanned = canSkirmishPostMove && movedSteps < stepsToMove;
                     const canAttemptPostMoveAttack = shouldTryPostMoveAttack || blockedBeforePlanned;
 
                     if (canAttemptPostMoveAttack && !mon._beingRemoved && mon.currentHealth > 0) {

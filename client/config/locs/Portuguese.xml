@@ -229,6 +229,8 @@ Ou sobrecarregue as pistas para quebrar as defesas.</T>
       <T id="CONFIG_ROWS" l="0">Linhas: {0}</T>
       <T id="CONFIG_COLS" l="0">Colunas: {0}</T>
       <T id="CONFIG_START_GAME" l="0">Iniciar</T>
+
+      <T id="CONFIG_LOADOUT_REQUIRED" l="0">Complete todos os loadouts (Defesas/Monstros Padrao/Prototipo) antes de iniciar.</T>
       <T id="CHALLENGE_DESC_FALLBACK" l="0">Desafio description</T>
       <T id="CHALLENGE_REWARD_LINE" l="0">Recompensa: +{0} Fichas</T>
       <T id="CHALLENGE_SIDES_LINE" l="0">Voc&#234;: {0} | Oponente: {1} ({2})</T>
@@ -282,6 +284,18 @@ Ou sobrecarregue as pistas para quebrar as defesas.</T>
       <T id="LOADOUT_SLOT" l="0">{0}.</T>
       <T id="LOADOUT_AVAILABLE" l="0">Unidades disponiveis</T>
       <T id="LOADOUT_SHOP" l="0">Loja</T>
+
+      <T id="LOADOUT_SHUFFLE" l="0">Embaralhar</T>
+
+      <T id="LOADOUT_SHUFFLE_LOCKED" l="0">Embaralhar (Precisa de 5)</T>
+
+      <T id="LOADOUT_SHUFFLE_NEED5" l="0">Voce precisa de pelo menos 5 unidades desbloqueadas nesta categoria para embaralhar.</T>
+
+      <T id="LOADOUT_SHUFFLED" l="0">Loadout embaralhado!</T>
+
+      <T id="LOADOUT_READY" l="0">Todos os loadouts estao prontos</T>
+
+      <T id="LOADOUT_INCOMPLETE" l="0">Incompleto: {0}</T>
       <T id="LOADOUT_DEV" l="0">DEV</T>
       <T id="LOADOUT_CLASS" l="0">Classe</T>
       <T id="LOADOUT_PLACEMENT" l="0">Posicionamento</T>
@@ -356,6 +370,8 @@ Ou sobrecarregue as pistas para quebrar as defesas.</T>
       <T id="HISTORY_ROLLED" l="0">{0} rolou: {1}</T>
       <T id="HISTORY_UNIT_DEFEATED" l="0">{0} foi derrotado</T>
       <T id="HISTORY_UNIT_REMOVED" l="0">{0} foi removido</T>
+
+      <T id="HISTORY_UNIT_EXPIRED" l="0">{0} expirou</T>
       <T id="TOOLTIP_TURN" l="0">turno</T>
       <T id="TOOLTIP_TURNS" l="0">turnos</T>
       <T id="TOOLTIP_LIFESPAN_LINE" l="0">Duracao: {0} {1}</T>

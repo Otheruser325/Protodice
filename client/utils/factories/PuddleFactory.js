@@ -1,4 +1,4 @@
-import { DEBUG_MODE } from '../DebugManager.js';
+import { DEBUG_MODE, DEV_DEBUG_MODE } from '../DebugManager.js';
 import CombatFactory from './CombatFactory.js';
 import DefenceFactory from './DefenceFactory.js';
 import MonsterFactory from './MonsterFactory.js';
@@ -25,6 +25,8 @@ export default class PuddleFactory {
             if (!manifest || !Array.isArray(manifest.files)) return;
 
             for (const file of manifest.files) {
+                const isTestFile = /^test/i.test(String(file || ''));
+                if (isTestFile && !DEV_DEBUG_MODE) continue;
                 try {
                     const res = await fetch(`assets/gamedata/PuddleDefinitions/${file}`);
                     if (!res.ok) continue;
@@ -32,6 +34,8 @@ export default class PuddleFactory {
                     if (!raw || !raw.trim()) continue;
                     const data = JSON.parse(raw);
                     if (!data || !data.TypeName) continue;
+                    const isDevOnly = !!data.IsDevOnly || /^test/i.test(String(data.TypeName || ''));
+                    if (isDevOnly && !DEV_DEBUG_MODE) continue;
                     this.puddleData[data.TypeName] = data;
                 } catch (e) {
                     if (DEBUG_MODE) console.warn('[PuddleFactory] failed to load', file, e);

@@ -1,22 +1,19 @@
 import GlobalLocalization from './LocalizationManager.js';
 
 class ErrorManager {
-    constructor() {
-        this.errors = [];
-        this._scene = null;
-        this._container = null;
-        this._escHandler = null;
-        this._recoveryHandler = null;
-        this._pendingErrors = [];
-        this._currentEntry = null;
-        this._displayCooldownUntil = 0;
-        this._displayTimer = null;
-        this._maxPendingErrors = 25;
-        this._setupGlobalHandlers();
-    }
+    static errors = [];
+    static _scene = null;
+    static _container = null;
+    static _escHandler = null;
+    static _recoveryHandler = null;
+    static _pendingErrors = [];
+    static _currentEntry = null;
+    static _displayCooldownUntil = 0;
+    static _displayTimer = null;
+    static _maxPendingErrors = 25;
 
     /* ---------- GLOBAL HANDLERS ---------- */
-    _setupGlobalHandlers() {
+    static _setupGlobalHandlers() {
         if (typeof window === 'undefined') return;
 
         // Handle uncaught errors
@@ -70,7 +67,7 @@ class ErrorManager {
     }
 
     /* ---------- SCENE / RECOVERY API ---------- */
-    setScene(scene) {
+    static setScene(scene) {
         this._scene = scene;
         this._attemptDisplayQueue();
     }
@@ -79,12 +76,12 @@ class ErrorManager {
      * Register a custom recovery callback (scene-specific cleanup).
      * Should be a zero-arg function (or async) that tries to repair known scene invariants.
      */
-    registerRecoveryHandler(fn) {
+    static registerRecoveryHandler(fn) {
         if (typeof fn === 'function') this._recoveryHandler = fn;
     }
 
     /* ---------- LOGGING ---------- */
-    logError(errOrMsg, meta = {}) {
+    static logError(errOrMsg, meta = {}) {
         try {
             if (this._isNonCriticalBrowserError(errOrMsg)) return;
             const now = Date.now();
@@ -121,7 +118,7 @@ class ErrorManager {
         }
     }
 
-    getErrorType(error) {
+    static getErrorType(error) {
         try {
             if (error instanceof SyntaxError) return 'syntax';
             if (error instanceof TypeError) return 'type';
@@ -133,7 +130,7 @@ class ErrorManager {
         }
     }
 
-    _isNonCriticalBrowserError(errOrMsg) {
+    static _isNonCriticalBrowserError(errOrMsg) {
         try {
             if (!errOrMsg) return false;
             const name = errOrMsg?.name ? String(errOrMsg.name) : '';
@@ -166,7 +163,7 @@ class ErrorManager {
         }
     }
 
-    getErrorConfig(errorType) {
+    static getErrorConfig(errorType) {
         const t = (key, fallback) => GlobalLocalization.t(key, fallback);
         const configs = {
             syntax: { title: t('ERROR_SYNTAX', 'Syntax Error'), color: 0xff6666, hex: '#ff6666' },
@@ -185,7 +182,7 @@ class ErrorManager {
      * message: string
      * entry: original error entry (optional) - used for Show Details button
      */
-    displayError(scene, message = 'Unknown error', errorType = 'error', entry = null) {
+    static displayError(scene, message = 'Unknown error', errorType = 'error', entry = null) {
         try {
             this._currentEntry = entry || this._currentEntry;
             const config = this.getErrorConfig(errorType);
@@ -362,13 +359,13 @@ class ErrorManager {
         }
     }
 
-    _truncate(msg, n = 1000) {
+    static _truncate(msg, n = 1000) {
         if (!msg) return '';
         if (msg.length <= n) return msg;
         return msg.slice(0, n - 3) + '...';
     }
 
-    fadeOut() {
+    static fadeOut() {
         try {
             if (!this._scene || !this._container) {
                 this.hide();
@@ -397,7 +394,7 @@ class ErrorManager {
         }
     }
 
-    hide() {
+    static hide() {
         try {
             // remove keyboard handler
             try {
@@ -453,7 +450,7 @@ class ErrorManager {
     }
 
     /* ---------- DISPLAY QUEUE ---------- */
-    _queueForDisplay(entry) {
+    static _queueForDisplay(entry) {
         try {
             if (!entry) return;
             this._pendingErrors.push(entry);
@@ -463,7 +460,7 @@ class ErrorManager {
         } catch (e) {}
     }
 
-    _isSceneReady(scene) {
+    static _isSceneReady(scene) {
         try {
             if (!scene || !scene.add || !scene.cameras) return false;
             if (scene.sys && scene.sys.settings && scene.sys.settings.isBooted === false) return false;
@@ -474,7 +471,7 @@ class ErrorManager {
         }
     }
 
-    _scheduleDisplayAttempt(delayMs = 150) {
+    static _scheduleDisplayAttempt(delayMs = 150) {
         try {
             if (this._displayTimer) return;
             this._displayTimer = setTimeout(() => {
@@ -484,7 +481,7 @@ class ErrorManager {
         } catch (e) {}
     }
 
-    _attemptDisplayQueue() {
+    static _attemptDisplayQueue() {
         try {
             if (this._pendingErrors.length === 0) return;
 
@@ -530,7 +527,7 @@ class ErrorManager {
     /**
      * Top-level recover runner: runs custom handler and sprite heuristics
      */
-    async _runRecover(scene, entry = null) {
+    static async _runRecover(scene, entry = null) {
         // 1) try scene-provided handler
         if (this._recoveryHandler) {
             try {
@@ -569,7 +566,7 @@ class ErrorManager {
      * - destroys invalid children with missing textures
      * - for `scene.units` and `scene.holders`, if unit.sprite missing, create a simple placeholder shape
      */
-    _attemptSpriteRecovery(scene, entry = null) {
+    static _attemptSpriteRecovery(scene, entry = null) {
         return new Promise((resolve) => {
             try {
                 if (!scene) {
@@ -727,15 +724,17 @@ class ErrorManager {
     }
 
     /* ---------- UTIL ---------- */
-    getErrors() {
+    static getErrors() {
         return this.errors.slice();
     }
-    clearErrors() {
+    static clearErrors() {
         this.errors = [];
     }
 }
 
-const ErrorHandler = new ErrorManager();
+ErrorManager._setupGlobalHandlers();
+
+const ErrorHandler = ErrorManager;
 export default ErrorHandler;
 
 

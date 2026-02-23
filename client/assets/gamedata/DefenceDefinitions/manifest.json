@@ -23,6 +23,7 @@
         "ShockLauncher.defence",
 		"Shredder.defence",
 		"SIMO.defence",
-        "SniperTower.defence"
+        "SniperTower.defence",
+        "TestDefence.defence"
     ]
 }

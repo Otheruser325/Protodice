@@ -25,6 +25,7 @@ export default class ChangelogScene extends Phaser.Scene {
     const VIEW_TOP = 140;
     const VIEW_HEIGHT = Math.min(560, this.cameras.main.height - 220);
     const t = (key, fallback) => GlobalLocalization.t(key, fallback);
+    const normalizeNewlines = (value) => String(value ?? '').replace(/\\n/g, '\n');
 
     const data = this.cache.json.get('changelog');
     if (!data) {
@@ -33,7 +34,7 @@ export default class ChangelogScene extends Phaser.Scene {
     }
 
     // Title
-    this.add.text(CENTER_X, 70, data.title ?? t('CHANGELOG_TITLE', 'Changelog'), {
+    this.add.text(CENTER_X, 70, t('CHANGELOG_TITLE', data.title || 'Changelog'), {
       fontSize: '36px',
       fontFamily: '"Press Start 2P", cursive',
       color: '#ffffff'
@@ -90,7 +91,8 @@ export default class ChangelogScene extends Phaser.Scene {
 
       // Changes
       entry.changes.forEach(change => {
-        const bullet = this.add.text(20, y, `- ${change}`, {
+        const parsedChange = normalizeNewlines(change);
+        const bullet = this.add.text(20, y, `- ${parsedChange}`, {
           fontSize: '12px',
           fontFamily: '"Press Start 2P", cursive',
           color: '#ffffff',

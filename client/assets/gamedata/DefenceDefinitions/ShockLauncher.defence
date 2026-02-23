@@ -6,7 +6,7 @@
     "Damage": 4,
     "Range": 8,
     "Ammo": 1,
-    "ReloadDelay": 3,
+    "ReloadDelay": 4,
     "TargetingMode": "First",
     "ProjectileMotion": "Lobbed",
     "ProjectileSprite": "shock_bomb",

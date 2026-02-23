@@ -1,8 +1,12 @@
-﻿<?xml version="1.0" ?>
+<?xml version="1.0" ?>
 <SpriteInformation>
     <FrameInformation name="explosion" texh="89" texw="128" type="png">
         <Animation name="explosion">
-            <Cell ah="89" aw="128" ax="0" ay="0" h="89" name="explosion" w="128" x="0" y="0"/>
+            <Cell ah="89" aw="25" ax="0" ay="0" h="89" name="explosion_0" w="25" x="0" y="0"/>
+            <Cell ah="89" aw="25" ax="0" ay="0" h="89" name="explosion_1" w="25" x="25" y="0"/>
+            <Cell ah="89" aw="25" ax="0" ay="0" h="89" name="explosion_2" w="25" x="50" y="0"/>
+            <Cell ah="89" aw="25" ax="0" ay="0" h="89" name="explosion_3" w="25" x="75" y="0"/>
+            <Cell ah="89" aw="25" ax="0" ay="0" h="89" name="explosion_4" w="25" x="100" y="0"/>
         </Animation>
     </FrameInformation>
 </SpriteInformation>

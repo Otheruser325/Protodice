@@ -229,6 +229,8 @@ Ou submergez les voies pour percer les d&#233;fenses.</T>
       <T id="CONFIG_ROWS" l="0">Lignes : {0}</T>
       <T id="CONFIG_COLS" l="0">Colonnes : {0}</T>
       <T id="CONFIG_START_GAME" l="0">Commencer</T>
+
+      <T id="CONFIG_LOADOUT_REQUIRED" l="0">Completez tous les chargements (Defenses/Monstres Normal/Proto) avant de commencer.</T>
       <T id="CHALLENGE_DESC_FALLBACK" l="0">Defi description</T>
       <T id="CHALLENGE_REWARD_LINE" l="0">R&#233;compense: +{0} Jetons</T>
       <T id="CHALLENGE_SIDES_LINE" l="0">Vous : {0} | Adversaire : {1} ({2})</T>
@@ -282,6 +284,18 @@ Ou submergez les voies pour percer les d&#233;fenses.</T>
       <T id="LOADOUT_SLOT" l="0">{0}.</T>
       <T id="LOADOUT_AVAILABLE" l="0">Unites disponibles</T>
       <T id="LOADOUT_SHOP" l="0">Boutique</T>
+
+      <T id="LOADOUT_SHUFFLE" l="0">Melanger</T>
+
+      <T id="LOADOUT_SHUFFLE_LOCKED" l="0">Melanger (Besoin de 5)</T>
+
+      <T id="LOADOUT_SHUFFLE_NEED5" l="0">Il faut au moins 5 unites debloquees dans cette categorie pour melanger.</T>
+
+      <T id="LOADOUT_SHUFFLED" l="0">Chargement melange !</T>
+
+      <T id="LOADOUT_READY" l="0">Tous les chargements sont prets</T>
+
+      <T id="LOADOUT_INCOMPLETE" l="0">Incomplet : {0}</T>
       <T id="LOADOUT_DEV" l="0">DEV</T>
       <T id="LOADOUT_CLASS" l="0">Classe</T>
       <T id="LOADOUT_PLACEMENT" l="0">Placement</T>
@@ -356,6 +370,8 @@ Ou submergez les voies pour percer les d&#233;fenses.</T>
       <T id="HISTORY_ROLLED" l="0">{0} a lanc&#233; : {1}</T>
       <T id="HISTORY_UNIT_DEFEATED" l="0">{0} a &#233;t&#233; vaincu</T>
       <T id="HISTORY_UNIT_REMOVED" l="0">{0} a &#233;t&#233; retir&#233;</T>
+
+      <T id="HISTORY_UNIT_EXPIRED" l="0">{0} a expire</T>
       <T id="TOOLTIP_TURN" l="0">tour</T>
       <T id="TOOLTIP_TURNS" l="0">tours</T>
       <T id="TOOLTIP_LIFESPAN_LINE" l="0">Duree de vie: {0} {1}</T>

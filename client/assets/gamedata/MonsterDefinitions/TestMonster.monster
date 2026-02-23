@@ -1,0 +1,18 @@
+{
+    "TypeName": "TestMonster",
+    "FullName": "Test Monster",
+    "Rarity": "Common",
+    "Health": 60,
+    "Damage": 12,
+    "Range": 2,
+    "Speed": 1,
+    "Ammo": 4,
+    "ReloadDelay": 1,
+    "TargetingMode": "First",
+    "ProjectileMotion": "Linear",
+    "ProjectileSprite": "rock",
+    "DisplaySprite": "goblin",
+    "SpecialEffects": [],
+    "StatusEffects": [],
+    "IsProto": false
+}

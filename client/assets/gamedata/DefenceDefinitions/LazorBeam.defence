@@ -14,8 +14,7 @@
 	"SpecialEffects": [
 	  {
 	    "Type": "LaserBeam",
-		"TravelEntireRow": false,
-	    "Extension": 4,
+		"TravelEntireRow": true,
 		"Sprite": "laser",
 		"Audio": "laser"
 	  }

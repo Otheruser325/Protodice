@@ -229,6 +229,8 @@ Oppure travolgi i corridoi per superare le difese.</T>
       <T id="CONFIG_ROWS" l="0">Righe: {0}</T>
       <T id="CONFIG_COLS" l="0">Colonne: {0}</T>
       <T id="CONFIG_START_GAME" l="0">Inizia</T>
+
+      <T id="CONFIG_LOADOUT_REQUIRED" l="0">Completa tutti i loadout (Difese/Mostri Normale/Proto) prima di iniziare.</T>
       <T id="CHALLENGE_DESC_FALLBACK" l="0">Sfida description</T>
       <T id="CHALLENGE_REWARD_LINE" l="0">Ricompensa: +{0} Gettoni</T>
       <T id="CHALLENGE_SIDES_LINE" l="0">Tu: {0} | Avversario: {1} ({2})</T>
@@ -282,6 +284,18 @@ Oppure travolgi i corridoi per superare le difese.</T>
       <T id="LOADOUT_SLOT" l="0">{0}.</T>
       <T id="LOADOUT_AVAILABLE" l="0">Unit&#224; disponibili</T>
       <T id="LOADOUT_SHOP" l="0">Negozio</T>
+
+      <T id="LOADOUT_SHUFFLE" l="0">Mescola</T>
+
+      <T id="LOADOUT_SHUFFLE_LOCKED" l="0">Mescola (Servono 5)</T>
+
+      <T id="LOADOUT_SHUFFLE_NEED5" l="0">Servono almeno 5 unita sbloccate in questa categoria per mescolare.</T>
+
+      <T id="LOADOUT_SHUFFLED" l="0">Loadout mescolato!</T>
+
+      <T id="LOADOUT_READY" l="0">Tutti i loadout sono pronti</T>
+
+      <T id="LOADOUT_INCOMPLETE" l="0">Incompleto: {0}</T>
       <T id="LOADOUT_DEV" l="0">DEV</T>
       <T id="LOADOUT_CLASS" l="0">Classe</T>
       <T id="LOADOUT_PLACEMENT" l="0">Posizionamento</T>
@@ -356,6 +370,8 @@ Oppure travolgi i corridoi per superare le difese.</T>
       <T id="HISTORY_ROLLED" l="0">{0} ha tirato: {1}</T>
       <T id="HISTORY_UNIT_DEFEATED" l="0">{0} &#232; stato sconfitto</T>
       <T id="HISTORY_UNIT_REMOVED" l="0">{0} &#232; stato rimosso</T>
+
+      <T id="HISTORY_UNIT_EXPIRED" l="0">{0} e scaduto</T>
       <T id="TOOLTIP_TURN" l="0">turno</T>
       <T id="TOOLTIP_TURNS" l="0">turni</T>
       <T id="TOOLTIP_LIFESPAN_LINE" l="0">Durata: {0} {1}</T>
